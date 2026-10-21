@@ -8,6 +8,7 @@ import {
   CreditCard,
   Wallet,
   Bot,
+  Sparkles,
   Settings,
   HelpCircle,
   Menu,
@@ -94,7 +95,7 @@ export default function Sidebar() {
         label: "Vue d'ensemble",
         items: [
           { href: "/dashboard", icon: Home, label: "Tableau de bord" },
-          { href: "/dashboard#ai-advisor", icon: Bot, label: "Agent IA" },
+          { href: "/dashboard#points-saillants", icon: Sparkles, label: "Points saillants" },
           { href: "/dashboard#accounts", icon: BarChart2, label: "Vue comptes" },
         ],
       },

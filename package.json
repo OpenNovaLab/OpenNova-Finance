@@ -20,8 +20,6 @@
     "health:convex": "node -e \"const s=process.env.HEALTHCHECK_SECRET||'';fetch('http://localhost:3000/api/health/convex',{headers:{'x-health-secret':s}}).then(async r=>{console.log(r.status);console.log(await r.text());if(r.status>=400)process.exit(1)}).catch(e=>{console.error(e);process.exit(1)})\""
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.25",
-    "@ai-sdk/react": "^3.0.72",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -51,7 +49,6 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "1.3.1",
-    "ai": "^6.0.70",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

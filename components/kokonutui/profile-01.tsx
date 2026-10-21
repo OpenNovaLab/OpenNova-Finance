@@ -153,11 +153,6 @@ export default function Profile01({
                 </label>
               </div>
 
-              <div className="rounded-md border border-border/60 bg-background/40 p-2 text-[11px] text-muted-foreground">
-                AI access is secured server-side. Configure <code>OPENAI_API_KEY</code> in
-                <code>.env.local</code> to enable advisor responses.
-              </div>
-
               <label className="space-y-1 text-sm">
                 <span className="text-xs text-muted-foreground">Timezone</span>
                 <select
