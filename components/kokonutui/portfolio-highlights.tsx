@@ -69,6 +69,7 @@ export default function PortfolioHighlights({ className }: PortfolioHighlightsPr
   const intelligence = useMemo(
     () =>
       buildAiFinanceIntelligenceContext({
+        locale: uiLocale,
         accounts,
         transactions,
         goals,
@@ -77,7 +78,7 @@ export default function PortfolioHighlights({ className }: PortfolioHighlightsPr
         tradingOverview,
         stockIntelligence,
       }),
-    [accounts, goals, growthToolkit, stockActions, stockIntelligence, tradingOverview, transactions]
+    [accounts, goals, growthToolkit, stockActions, stockIntelligence, tradingOverview, transactions, uiLocale]
   )
 
   useEffect(() => {
