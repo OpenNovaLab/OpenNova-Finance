@@ -21,6 +21,24 @@ async function hmac(message: string, secret: string): Promise<string> {
   return toBase64Url(new Uint8Array(sig))
 }
 
+/**
+ * Constant-time string comparison (equivalent of Node's
+ * `crypto.timingSafeEqual`, implemented on WebCrypto-compatible
+ * primitives so it also runs in the Edge middleware runtime).
+ * Signature length is fixed for HMAC-SHA256, so the early length
+ * check does not leak secret-dependent information.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const bufA = encoder.encode(a)
+  const bufB = encoder.encode(b)
+  if (bufA.length !== bufB.length) return false
+  let diff = 0
+  for (let i = 0; i < bufA.length; i++) {
+    diff |= bufA[i] ^ bufB[i]
+  }
+  return diff === 0
+}
+
 export type AccessSessionPayload = {
   keyId: string
   type: "one_time" | "temporary" | "permanent"
@@ -39,9 +57,14 @@ export async function verifySession(token: string, secret: string): Promise<Acce
   if (!payloadB64 || !signature) return null
 
   const expected = await hmac(payloadB64, secret)
-  if (signature !== expected) return null
+  if (!timingSafeEqual(signature, expected)) return null
 
-  const payload = JSON.parse(fromBase64Url(payloadB64)) as AccessSessionPayload
-  if (!payload.exp || Date.now() >= payload.exp) return null
+  let payload: AccessSessionPayload
+  try {
+    payload = JSON.parse(fromBase64Url(payloadB64)) as AccessSessionPayload
+  } catch {
+    return null
+  }
+  if (!payload || typeof payload !== "object" || !payload.exp || Date.now() >= payload.exp) return null
   return payload
 }
