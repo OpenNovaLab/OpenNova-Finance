@@ -46,6 +46,7 @@ export interface AiFinanceIntelligenceContext {
 }
 
 interface Inputs {
+  locale?: AiFinanceLocale
   accounts: AccountItem[]
   transactions: Transaction[]
   goals: FinancialGoal[]
@@ -235,81 +236,156 @@ const appendPriority = (
   }
 }
 
+export type AiFinanceLocale = "fr" | "en"
+
+const priorityText: Record<
+  AiFinanceLocale,
+  Record<string, { title: string; reason: string; metricLabel: string; nextAction: string }>
+> = {
+  en: {
+    "emergency-fund-gap": {
+      title: "Build emergency buffer",
+      reason: "Current liquidity buffer is below the 3-month baseline.",
+      metricLabel: "Emergency Fund",
+      nextAction:
+        "Increase monthly savings allocation until at least 3 months of expenses are covered.",
+    },
+    "debt-pressure": {
+      title: "Reduce debt pressure",
+      reason: "Debt exceeds available cash buffer.",
+      metricLabel: "Debt/Cash Ratio",
+      nextAction: "Prioritize high-interest debt repayment and pause non-essential risk taking.",
+    },
+    "savings-rate": {
+      title: "Lift savings rate",
+      reason: "Savings rate is below target execution threshold.",
+      metricLabel: "Savings Rate",
+      nextAction: "Reduce discretionary spend or increase recurring contributions by 5-10%.",
+    },
+    "concentration-risk": {
+      title: "Reduce concentration risk",
+      reason: "Largest position dominates portfolio exposure.",
+      metricLabel: "Top Position Weight",
+      nextAction: "Trim overweight position and rebalance into diversified assets.",
+    },
+    "critical-alerts": {
+      title: "Resolve critical market alerts",
+      reason: "Critical alerts require immediate review.",
+      metricLabel: "Critical Alerts",
+      nextAction: "Review impacted symbols and update stop-loss/position sizing now.",
+    },
+    "execution-sample": {
+      title: "Build execution sample size",
+      reason: "Decision quality metrics are still based on limited trade history.",
+      metricLabel: "Tracked Trades",
+      nextAction: "Track and review every position lifecycle to improve signal calibration.",
+    },
+  },
+  fr: {
+    "emergency-fund-gap": {
+      title: "Constituer un fonds d'urgence",
+      reason: "Le coussin de liquidités actuel est sous le seuil de référence de 3 mois.",
+      metricLabel: "Fonds d'urgence",
+      nextAction: "Augmenter l'épargne mensuelle jusqu'à couvrir au moins 3 mois de dépenses.",
+    },
+    "debt-pressure": {
+      title: "Réduire la pression de la dette",
+      reason: "La dette dépasse le coussin de liquidités disponible.",
+      metricLabel: "Ratio dette/liquidités",
+      nextAction:
+        "Prioriser le remboursement des dettes à taux élevé et suspendre les prises de risque non essentielles.",
+    },
+    "savings-rate": {
+      title: "Augmenter le taux d'épargne",
+      reason: "Le taux d'épargne est sous le seuil d'exécution visé.",
+      metricLabel: "Taux d'épargne",
+      nextAction:
+        "Réduire les dépenses discrétionnaires ou augmenter les contributions récurrentes de 5 à 10 %.",
+    },
+    "concentration-risk": {
+      title: "Réduire le risque de concentration",
+      reason: "La plus grande position domine l'exposition du portefeuille.",
+      metricLabel: "Poids de la position principale",
+      nextAction: "Réduire la position en surpoids et rééquilibrer vers des actifs diversifiés.",
+    },
+    "critical-alerts": {
+      title: "Traiter les alertes de marché critiques",
+      reason: "Les alertes critiques exigent une revue immédiate.",
+      metricLabel: "Alertes critiques",
+      nextAction:
+        "Passer en revue les symboles touchés et mettre à jour les stop-loss et la taille des positions dès maintenant.",
+    },
+    "execution-sample": {
+      title: "Étoffer l'échantillon d'exécution",
+      reason:
+        "Les indicateurs de qualité des décisions reposent encore sur un historique de transactions limité.",
+      metricLabel: "Transactions suivies",
+      nextAction:
+        "Suivre et revoir le cycle de vie de chaque position pour améliorer la calibration des signaux.",
+    },
+  },
+}
+
 const buildPriorities = (
   metrics: AiFinanceIntelligenceContext["metrics"],
-  stockIntelligence?: StockIntelligenceContext | null
+  stockIntelligence?: StockIntelligenceContext | null,
+  locale: AiFinanceLocale = "en"
 ) => {
   const priorities: AiPriorityItem[] = []
+  const text = priorityText[locale]
+  const monthsUnit = locale === "fr" ? "mois" : "months"
 
   if (metrics.emergencyFundMonths < 3) {
     appendPriority(priorities, {
       id: "emergency-fund-gap",
-      title: "Build emergency buffer",
-      reason: "Current liquidity buffer is below the 3-month baseline.",
+      ...text["emergency-fund-gap"],
       severity: "critical",
-      metricLabel: "Emergency Fund",
-      metricValue: `${round2(metrics.emergencyFundMonths)} months`,
-      nextAction: "Increase monthly savings allocation until at least 3 months of expenses are covered.",
+      metricValue: `${round2(metrics.emergencyFundMonths)} ${monthsUnit}`,
     })
   }
 
   if (metrics.debtToCashRatio > 1) {
     appendPriority(priorities, {
       id: "debt-pressure",
-      title: "Reduce debt pressure",
-      reason: "Debt exceeds available cash buffer.",
+      ...text["debt-pressure"],
       severity: "high",
-      metricLabel: "Debt/Cash Ratio",
       metricValue: round2(metrics.debtToCashRatio).toString(),
-      nextAction: "Prioritize high-interest debt repayment and pause non-essential risk taking.",
     })
   }
 
   if (metrics.savingsRatePct < 10) {
     appendPriority(priorities, {
       id: "savings-rate",
-      title: "Lift savings rate",
-      reason: "Savings rate is below target execution threshold.",
+      ...text["savings-rate"],
       severity: "high",
-      metricLabel: "Savings Rate",
       metricValue: formatPercent(metrics.savingsRatePct),
-      nextAction: "Reduce discretionary spend or increase recurring contributions by 5-10%.",
     })
   }
 
   if (metrics.portfolioConcentrationPct > 30) {
     appendPriority(priorities, {
       id: "concentration-risk",
-      title: "Reduce concentration risk",
-      reason: "Largest position dominates portfolio exposure.",
+      ...text["concentration-risk"],
       severity: "high",
-      metricLabel: "Top Position Weight",
       metricValue: formatPercent(metrics.portfolioConcentrationPct),
-      nextAction: "Trim overweight position and rebalance into diversified assets.",
     })
   }
 
   if (metrics.stockAlertsCritical > 0) {
     appendPriority(priorities, {
       id: "critical-alerts",
-      title: "Resolve critical market alerts",
-      reason: "Critical alerts require immediate review.",
+      ...text["critical-alerts"],
       severity: "critical",
-      metricLabel: "Critical Alerts",
       metricValue: String(metrics.stockAlertsCritical),
-      nextAction: "Review impacted symbols and update stop-loss/position sizing now.",
     })
   }
 
   if (stockIntelligence && stockIntelligence.registry.stats.totalTrades < 5) {
     appendPriority(priorities, {
       id: "execution-sample",
-      title: "Build execution sample size",
-      reason: "Decision quality metrics are still based on limited trade history.",
+      ...text["execution-sample"],
       severity: "medium",
-      metricLabel: "Tracked Trades",
       metricValue: String(stockIntelligence.registry.stats.totalTrades),
-      nextAction: "Track and review every position lifecycle to improve signal calibration.",
     })
   }
 
@@ -318,32 +394,61 @@ const buildPriorities = (
     .slice(0, 6)
 }
 
+const opportunityText: Record<
+  AiFinanceLocale,
+  {
+    strongLiquidity: string
+    strongGoals: string
+    winRate: (rate: string) => string
+    monthlySurplus: (amount: string) => string
+  }
+> = {
+  en: {
+    strongLiquidity:
+      "Liquidity and savings profile allows progressive allocation into long-term growth buckets.",
+    strongGoals:
+      "Goal execution is strong; can transition to optimization and tax-efficiency phase.",
+    winRate: (rate) =>
+      `Current win rate (${rate}%) supports scaling only if risk limits stay constant.`,
+    monthlySurplus: (amount) =>
+      `Monthly surplus ${amount} can be routed to debt reduction + automated investing cadence.`,
+  },
+  fr: {
+    strongLiquidity:
+      "Le profil de liquidités et d'épargne permet une allocation progressive vers des placements de croissance à long terme.",
+    strongGoals:
+      "L'exécution des objectifs est solide ; possibilité de passer à la phase d'optimisation et d'efficacité fiscale.",
+    winRate: (rate) =>
+      `Le taux de réussite actuel (${rate} %) ne justifie une augmentation d'échelle que si les limites de risque restent inchangées.`,
+    monthlySurplus: (amount) =>
+      `Le surplus mensuel de ${amount} peut être dirigé vers la réduction de la dette et une cadence d'investissement automatisée.`,
+  },
+}
+
 const buildOpportunities = (
   metrics: AiFinanceIntelligenceContext["metrics"],
-  stockIntelligence?: StockIntelligenceContext | null
+  stockIntelligence?: StockIntelligenceContext | null,
+  locale: AiFinanceLocale = "en"
 ) => {
   const opportunities: string[] = []
+  const text = opportunityText[locale]
 
   if (metrics.emergencyFundMonths >= 6 && metrics.savingsRatePct >= 15) {
-    opportunities.push(
-      "Liquidity and savings profile allows progressive allocation into long-term growth buckets."
-    )
+    opportunities.push(text.strongLiquidity)
   }
 
   if (metrics.goalsCompletionPct >= 60) {
-    opportunities.push("Goal execution is strong; can transition to optimization and tax-efficiency phase.")
+    opportunities.push(text.strongGoals)
   }
 
   if (stockIntelligence && stockIntelligence.registry.stats.winRate >= 60) {
     opportunities.push(
-      `Current win rate (${stockIntelligence.registry.stats.winRate.toFixed(1)}%) supports scaling only if risk limits stay constant.`
+      text.winRate(stockIntelligence.registry.stats.winRate.toFixed(1))
     )
   }
 
   if (metrics.monthlyNetUsd > 0) {
-    opportunities.push(
-      `Monthly surplus ${formatUsd(metrics.monthlyNetUsd)} can be routed to debt reduction + automated investing cadence.`
-    )
+    opportunities.push(text.monthlySurplus(formatUsd(metrics.monthlyNetUsd)))
   }
 
   return opportunities.slice(0, 5)
@@ -456,8 +561,8 @@ export function buildAiFinanceIntelligenceContext(inputs: Inputs): AiFinanceInte
     generatedAt: new Date().toISOString(),
     scores,
     metrics,
-    priorities: buildPriorities(metrics, inputs.stockIntelligence),
-    opportunities: buildOpportunities(metrics, inputs.stockIntelligence),
+    priorities: buildPriorities(metrics, inputs.stockIntelligence, inputs.locale ?? "en"),
+    opportunities: buildOpportunities(metrics, inputs.stockIntelligence, inputs.locale ?? "en"),
     constraints: buildConstraints(inputs.growthToolkit, inputs.tradingOverview, inputs.stockIntelligence),
   }
 }

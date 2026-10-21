@@ -3,24 +3,23 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.2.6-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-149ECA)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6)](https://www.typescriptlang.org/)
-[![AI SDK](https://img.shields.io/badge/Vercel%20AI%20SDK-6.x-black)](https://sdk.vercel.ai/)
 [![License](https://img.shields.io/badge/License-Private-red)](#)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/OpenNovaLab/OpenNova-Finance/ci.yml?branch=main&label=CI)](https://github.com/OpenNovaLab/OpenNova-Finance/actions/workflows/ci.yml)
 [![E2E](https://img.shields.io/github/actions/workflow/status/OpenNovaLab/OpenNova-Finance/e2e.yml?branch=main&label=E2E)](https://github.com/OpenNovaLab/OpenNova-Finance/actions/workflows/e2e.yml)
 [![AC PASS/FAIL](https://img.shields.io/github/actions/workflow/status/OpenNovaLab/OpenNova-Finance/e2e.yml?branch=main&label=AC%20PASS%2FFAIL)](https://github.com/OpenNovaLab/OpenNova-Finance/actions/workflows/e2e.yml)
 
-OpenNova Finance est une application de pilotage financier augmentee par IA (GPT-5.3-Codex):
+OpenNova Finance est une application de pilotage financier personnel:
 - vision globale du portefeuille (comptes, transactions, objectifs, actions),
 - trading paper avec garde-fous de risque institutionnels,
 - intelligence boursiere autonome (RSI, MACD, fondamentaux, alertes),
 - mode marche reel via Massive API (Polygon) avec fallback intelligent,
-- assistance conversationnelle contextuelle en continu.
+- points saillants locaux: scores, priorites et alertes calcules dans l'app, sans service externe.
 
 ##
 
 ![Screenshot OpenNova Finance Dashboard (desktop)](public/opennova-dashboard-screenshot-2026-02-17.jpg)
-![Screenshot OpenNova Finance Dashboard (mobile - Agent IA)](public/opennova-dashboard-mobile-ai-2026-02-18.jpg)
+![Screenshot OpenNova Finance Dashboard (mobile - Points saillants)](public/opennova-dashboard-mobile-ai-2026-02-18.jpg)
 ![Screenshot OpenNova Finance Dashboard (mobile - Comptes)](public/opennova-dashboard-mobile-accounts-2026-02-18.jpg)
 
 _Captures reelles du dashboard OpenNova Finance (desktop + mobile)._
@@ -31,8 +30,8 @@ OpenNova combine 3 couches dans une seule interface:
 
 1. `Finance Core`
    Comptes, cashflow, objectifs, budget mensuel, planification.
-2. `AI Intelligence`
-   Agent IA GPT-5.3-Codex, priorites automatiques, recommandations proactives.
+2. `Intelligence locale`
+   Panneau Points saillants: scores, priorites automatiques et alertes, calcules localement.
 3. `Execution & Risk`
    Trading desk simule, idempotence des ordres, audit trail, kill-switch, drawdown controls.
 
@@ -40,7 +39,7 @@ Le tout est pense pour une experience produit complete: analyser, decider, execu
 
 ## Fonctionnalites principales
 
-- AI Advisor branche sur GPT-5.3-Codex via `/api/chat`
+- Points saillants: panneau local (scores, priorites, alertes d'actions) calcule dans l'app, sans cle API ni appel externe
 - Growth Studio: allocation cible, simulation Monte Carlo, guardrails
 - Trading Desk IA:
   - execution paper (`market`/`limit`),
@@ -75,27 +74,11 @@ pnpm install
 Cree un fichier `.env.local` a la racine:
 
 ```bash
-# Obligatoire pour l'agent IA
-OPENAI_API_KEY=your_openai_api_key
-
-# Optionnel (defaut: gpt-5.3-codex)
-OPENAI_MODEL=gpt-5.3-codex
-
-# Optionnel (label affiche dans l'UI)
-NEXT_PUBLIC_OPENAI_MODEL_LABEL=GPT-5.3-Codex
-
 # Optionnel (SEO canonical)
 NEXT_PUBLIC_SITE_URL=https://your-domain.example
 
 # Optionnel (securise /api/notification-cron)
 NOTIFICATION_CRON_SECRET=your_cron_secret
-
-# Optionnel (rate limit /api/chat)
-AI_RATE_LIMIT_WINDOW_MS=60000
-AI_RATE_LIMIT_MAX_REQUESTS=20
-AI_RATE_LIMIT_TRUST_PROXY_HEADERS=true
-AI_RATE_LIMIT_USER_AGENT_SALT=change_me
-AI_RATE_LIMIT_MAX_KEYS=10000
 
 # Optionnel (active les donnees de marche reelles Massive/Polygon)
 MASSIVE_API_KEY=your_massive_api_key
@@ -163,15 +146,14 @@ Ces headers sont utilises automatiquement par le client interne quand l'utilisat
 
 ## Plan d'amelioration recommande
 
-- Voir `docs/recommandations-amelioration.md` pour un plan priorise en 10 points (fiabilite providers Massive/TwelveData, durcissement trading/idempotence, robustesse `/api/chat`, sync portfolio, observabilite, qualite de test et UX explicable).
+- Voir `docs/recommandations-amelioration.md` pour un plan priorise en 10 points (fiabilite providers Massive/TwelveData, durcissement trading/idempotence, sync portfolio, observabilite, qualite de test et UX explicable).
 
-### Etape 1 - Verifier l'agent IA
+### Etape 1 - Verifier les points saillants
 
 1. Ouvre le dashboard.
-2. Va dans la section `Agent IA`.
-3. Envoie une question simple:
-   `Analyse ma situation actuelle`.
-4. Verifie que la reponse mentionne le modele configure (ex: GPT-5.3-Codex).
+2. Va dans la section `Points saillants`, en tete de l'onglet Portefeuille.
+3. Verifie que les scores, les faits saillants et les priorites s'affichent (calcul 100 % local, aucune cle API requise).
+4. Bascule la langue dans `Settings` (FR/EN) et verifie que le contenu des priorites suit la langue choisie.
 
 ### Etape 2 - Configurer le Trading Desk
 
@@ -223,16 +205,8 @@ Ces headers sont utilises automatiquement par le client interne quand l'utilisat
 
 | Variable | Requise | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | Oui | Cle serveur pour `/api/chat` |
-| `OPENAI_MODEL` | Non | Modele IA (defaut: `gpt-5.3-codex`) |
-| `NEXT_PUBLIC_OPENAI_MODEL_LABEL` | Non | Label UI du modele |
 | `NEXT_PUBLIC_SITE_URL` | Non | URL canonique SEO |
 | `NOTIFICATION_CRON_SECRET` | Non | Secret de protection `/api/notification-cron` |
-| `AI_RATE_LIMIT_WINDOW_MS` | Non | Fenetre de rate limiting du chat |
-| `AI_RATE_LIMIT_MAX_REQUESTS` | Non | Max de requetes IA par fenetre |
-| `AI_RATE_LIMIT_TRUST_PROXY_HEADERS` | Non | Active/desactive l'usage des headers proxy (`Forwarded`, `x-forwarded-for`) |
-| `AI_RATE_LIMIT_USER_AGENT_SALT` | Non | Salt serveur pour hachage du fallback user-agent |
-| `AI_RATE_LIMIT_MAX_KEYS` | Non | Nombre maximal de buckets rate-limit gardes en memoire |
 | `MASSIVE_API_KEY` | Non | Cle Massive (Polygon) pour donnees de marche reelles |
 | `MASSIVE_LIVE_DATA` | Non | Active/desactive le mode live (`true` par defaut si cle presente) |
 | `MASSIVE_API_BASE_URL` | Non | URL API Massive (defaut: `https://api.massive.com`) |
@@ -243,11 +217,6 @@ Ces headers sont utilises automatiquement par le client interne quand l'utilisat
 | `TWELVEDATA_HTTP_TIMEOUT_MS` | Non | Timeout HTTP pour appels TwelveData |
 
 ## API utiles
-
-### Chat IA
-- `POST /api/chat`
-- Validation Zod + rate limit + key serveur uniquement
-- Reponses incluent `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` et `Cache-Control: no-store`
 
 ### Trading
 - `GET /api/trading/overview`
@@ -355,21 +324,18 @@ pnpm build
 
 ## Architecture (fichiers cles)
 
-- `app/api/chat/route.ts` - orchestration GPT-5.3-Codex
+- `components/kokonutui/portfolio-highlights.tsx` - UI Points saillants (remplace l'ancien agent IA)
 - `lib/ai-finance-intelligence.ts` - scoring global finance + priorites
 - `lib/trading-risk.ts` - moteur de risque (kill-switch, drawdown, regime)
 - `lib/trading-engine.ts` - execution paper + validation guardrails
 - `lib/trading-storage.ts` - persistance trading + audit
 - `lib/stock-analysis-engine.ts` - analyse technique/fondamentale
 - `lib/stock-alerts.ts` - alertes et signaux proactifs
-- `components/kokonutui/ai-advisor.tsx` - UI agent IA
 - `components/kokonutui/ai-trading-desk.tsx` - UI execution + policy risque
 - `components/kokonutui/stock-analysis-panel.tsx` - UI analyse boursiere
 
 ## Securite
 
-- `OPENAI_API_KEY` n'est jamais lue depuis le client.
-- `/api/chat` refuse les payloads invalides (Zod) et applique un rate limit avec identification client robuste (`Forwarded`/IP proxy/CDN, puis fallback user-agent hache).
 - `/api/trading/orders` supporte l'idempotence pour eviter les doubles executions.
 - Si `NOTIFICATION_CRON_SECRET` est defini, `/api/notification-cron` exige:
   - `x-cron-secret: <secret>` ou
@@ -380,7 +346,6 @@ pnpm build
 - `OPENNOVA_SYSTEM.md` - vue systeme complete
 - `OPENNOVA_ARCHITECTURE.md` - schema architecture
 - `OPENNOVA_QUICKSTART.md` - guide rapide
-- `AI_SETUP.md` - setup IA minimal
 
 ## QA
 
