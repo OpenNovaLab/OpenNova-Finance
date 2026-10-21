@@ -20,5 +20,11 @@ export default defineConfig({
         reuseExistingServer: !process.env.CI,
         // Allows cold-start runs where we may build before serving the app.
         timeout: 300000,
+        // The e2e harness serves a production build whose middleware is
+        // fail-closed without ACCESS_SESSION_SECRET; bypass the access
+        // gate so the smoke specs exercise the app itself.
+        env: {
+          ACCESS_CONTROL_BYPASS: 'true',
+        },
       },
 });
