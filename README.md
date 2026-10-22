@@ -16,13 +16,11 @@ OpenNova Finance est une application de pilotage financier personnel:
 - mode marche reel via Massive API (Polygon) avec fallback intelligent,
 - points saillants locaux: scores, priorites et alertes calcules dans l'app, sans service externe.
 
-##
+## Apercu visuel
 
-![Screenshot OpenNova Finance Dashboard (desktop)](public/opennova-dashboard-screenshot-2026-02-17.jpg)
-![Screenshot OpenNova Finance Dashboard (mobile - Points saillants)](public/opennova-dashboard-mobile-ai-2026-02-18.jpg)
-![Screenshot OpenNova Finance Dashboard (mobile - Comptes)](public/opennova-dashboard-mobile-accounts-2026-02-18.jpg)
+![Tableau de bord OpenNova Finance - capture reelle (octobre 2026)](public/opennova-dashboard-2026-10-22.jpg)
 
-_Captures reelles du dashboard OpenNova Finance (desktop + mobile)._
+_Capture reelle du tableau de bord OpenNova Finance (theme sombre, octobre 2026) : onglets Portefeuille, Budget & Planification et Integrations, panneau Conseiller avec scores, priorites et plan proactif._
 
 ## Presentation
 
