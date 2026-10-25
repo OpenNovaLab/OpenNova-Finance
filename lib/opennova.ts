@@ -120,13 +120,3 @@ export {
 export { StockAnalysisPanel } from "@/components/kokonutui/stock-analysis-panel"
 export { StockAlertsWidget, useStockAlerts } from "@/components/kokonutui/stock-alerts-widget"
 
-// Test Data
-export {
-  testScenarios,
-  createMockStockPrice,
-  createMockFundamental,
-  createMockTechnical,
-  alertTestScenarios,
-  performanceTests,
-  debugCommands,
-} from "@/lib/opennova-tests"
