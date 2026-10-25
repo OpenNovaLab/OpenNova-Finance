@@ -6,6 +6,7 @@ import {
   CreditCard,
   Wallet,
   Sparkles,
+  Bot,
   CandlestickChart,
   ShieldAlert,
   TrendingUp,
@@ -20,6 +21,7 @@ import List02 from "./list-02"
 import List03 from "./list-03"
 import List04 from "./list-04"
 import PortfolioHighlights from "./portfolio-highlights"
+import HermesBriefing from "./hermes-briefing"
 import InsightsPanel from "./insights-panel"
 import PerformanceAllocation from "./performance-allocation"
 import Rebalancing from "./rebalancing"
@@ -135,6 +137,23 @@ export default function Content() {
               </div>
             </div>
             <PortfolioHighlights className="w-full" />
+          </section>
+
+          <section id="briefing-hermes" className="space-y-3 scroll-mt-24">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
+                <Bot className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                  Briefing Hermes
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Synthèse quotidienne générée localement par votre agent Hermes.
+                </p>
+              </div>
+            </div>
+            <HermesBriefing className="w-full" />
           </section>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
