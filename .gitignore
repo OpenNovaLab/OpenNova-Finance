@@ -30,3 +30,4 @@ next-env.d.ts
 # local runtime data
 /data/
 /.tmp/
+.nova-pickup-state.json
