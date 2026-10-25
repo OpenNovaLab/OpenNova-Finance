@@ -13,7 +13,9 @@ entrant) :
 3. appelle l'Ollama local (modèle nemotron-3.5-bolt:e4b par défaut,
    le même que l'agent Hermes) ;
 4. pousse le briefing via POST /api/hermes/briefings, authentifié par
-   la clé de service HERMES_BRIDGE_KEY.
+   la clé de service HERMES_BRIDGE_KEY — vers l'instance locale par
+   défaut, et aussi vers une deuxième cible optionnelle (ex. la copie
+   Vercel) si OPENNOVA_BASE_URL_2 est définie.
 
 Bibliothèque standard seulement. Voir README.md pour l'installation.
 """
@@ -130,10 +132,23 @@ def call_ollama(ollama_url: str, model: str, user_prompt: str) -> str:
         },
         timeout=900,
     )
-    content = (payload.get("message") or {}).get("content", "").strip()
+    content = strip_code_fence((payload.get("message") or {}).get("content", ""))
     if not content:
         fail("Ollama a répondu sans contenu. Vérifiez que le modèle est installé (ollama list).")
     return content
+
+
+def strip_code_fence(text: str) -> str:
+    """Retire une clôture ```markdown si le modèle a emballé sa réponse."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        return "\n".join(lines).strip()
+    return stripped
 
 
 def extract_title(markdown: str, date_str: str) -> str:
@@ -146,6 +161,40 @@ def extract_title(markdown: str, date_str: str) -> str:
     return f"Briefing Hermes du {date_str}"
 
 
+def post_briefing(base_url: str, payload: dict, bridge_key: str):
+    """POST d'un briefing vers une cible. Retourne (succès, détail) sans sortir."""
+    url = f"{base_url}/api/hermes/briefings"
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json; charset=utf-8",
+            "x-hermes-key": bridge_key,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            body = json.loads(response.read().decode("utf-8") or "{}")
+            detail = f"HTTP {response.status}"
+            if body.get("replaced"):
+                detail += " (remplace le briefing déjà présent pour cette date)"
+            return True, detail
+    except urllib.error.HTTPError as error:
+        body = ""
+        try:
+            body = error.read().decode("utf-8", errors="replace")[:300]
+        except Exception:
+            pass
+        return False, f"HTTP {error.code} — {body}"
+    except urllib.error.URLError as error:
+        return False, f"injoignable ({error.reason})"
+    except TimeoutError:
+        return False, "délai dépassé (60 s)"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Pont local Hermes -> OpenNova-Finance : génère et pousse le briefing quotidien."
@@ -153,7 +202,14 @@ def main() -> int:
     parser.add_argument(
         "--base-url",
         default=os.environ.get("OPENNOVA_BASE_URL", DEFAULT_BASE_URL),
-        help="URL de l'application OpenNova-Finance (défaut : %(default)s, ou $OPENNOVA_BASE_URL).",
+        help="Cible principale : URL de l'instance locale d'OpenNova-Finance "
+        "(défaut : %(default)s, ou $OPENNOVA_BASE_URL).",
+    )
+    parser.add_argument(
+        "--base-url-2",
+        default=os.environ.get("OPENNOVA_BASE_URL_2", ""),
+        help="Cible secondaire optionnelle (ex. la copie Vercel), ou $OPENNOVA_BASE_URL_2. "
+        "Le briefing y est aussi poussé ; son échec n'empêche pas la cible principale.",
     )
     parser.add_argument(
         "--ollama-url",
@@ -228,17 +284,32 @@ def main() -> int:
             "symboles": [str(symbol) for symbol in symboles][:100],
         },
     }
-    print("4/4 Envoi du briefing vers OpenNova-Finance…")
-    status, response = http_json(
-        "POST",
-        f"{base_url}/api/hermes/briefings",
-        payload=payload,
-        headers={"x-hermes-key": bridge_key},
-        timeout=60,
-    )
-    replaced = response.get("replaced")
-    detail = " (remplace le briefing déjà présent pour cette date)" if replaced else ""
-    print(f"Terminé : briefing du {args.date} accepté (HTTP {status}){detail}.")
+    targets = [base_url]
+    base_url_2 = (args.base_url_2 or "").strip().rstrip("/")
+    if base_url_2 and base_url_2 not in targets:
+        targets.append(base_url_2)
+
+    print(f"4/4 Envoi du briefing vers {len(targets)} cible(s)…")
+    successes = 0
+    for target in targets:
+        ok, detail = post_briefing(target, payload, bridge_key)
+        if ok:
+            successes += 1
+            print(f"  ✓ {target} : briefing du {args.date} accepté ({detail}).")
+        else:
+            print(f"  ✗ {target} : échec ({detail}).", file=sys.stderr)
+
+    if successes == 0:
+        fail(
+            "aucune cible n'a accepté le briefing. Vérifiez que l'application roule, "
+            "que HERMES_ENABLED=true côté serveur et que la clé du pont est la bonne. Voir README.md."
+        )
+    if successes < len(targets):
+        print(
+            f"AVERTISSEMENT : {successes}/{len(targets)} cibles ont accepté le briefing.",
+            file=sys.stderr,
+        )
+    print("Terminé.")
     return 0
 
 

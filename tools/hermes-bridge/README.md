@@ -23,6 +23,24 @@ En version 1, le pont appelle directement Ollama avec le même modèle que
 l'agent Hermes. Quand l'agent Hermes (OpenShell) sera confirmé stable,
 il pourra orchestrer le pont à la place de la tâche planifiée.
 
+## Hébergement hybride
+
+L'application roule en **deux instances à partir du même code** :
+
+- **Instance locale** (sur le PC, à côté de Hermes) : fonctions Hermes
+  actives (`HERMES_ENABLED=true` et `NEXT_PUBLIC_HERMES_ENABLED=true`).
+  C'est la cible principale du pont.
+- **Copie Vercel** (affichage rapide) : fonctions Hermes désactivées par
+  défaut. La section « Briefing Hermes » y affiche « disponible sur
+  l'instance locale seulement » et les routes du pont répondent
+  proprement (`hermes_disabled`, aucun détail interne).
+
+Le pont peut pousser le briefing vers les deux instances (`--base-url`
++ `--base-url-2`). La deuxième cible n'accepte le briefing que si
+Hermes y est aussi activé (variables définies sur Vercel) ; sinon elle
+répond proprement « désactivé » et le pont continue — l'échec de la
+copie ne bloque jamais l'instance locale.
+
 ## Prérequis
 
 - Python 3.10+ (aucune dépendance à installer : bibliothèque standard
@@ -57,7 +75,8 @@ d'environnement, ou `setx` dans un terminal) :
 | Variable | Valeur | Obligatoire |
 | --- | --- | --- |
 | `HERMES_BRIDGE_KEY` | la clé générée ci-dessus | oui |
-| `OPENNOVA_BASE_URL` | l'URL publique de l'app, ex. `https://votre-app.vercel.app` | oui en production (défaut : `http://localhost:3000`) |
+| `OPENNOVA_BASE_URL` | l'instance locale de l'app (défaut : `http://localhost:3000`) | non (défaut) |
+| `OPENNOVA_BASE_URL_2` | deuxième cible optionnelle, ex. l'URL Vercel `https://votre-app.vercel.app` | non |
 | `OLLAMA_URL` | `http://127.0.0.1:11434` | non (défaut) |
 | `HERMES_MODEL` | `nemotron-3.5-bolt:e4b` | non (défaut) |
 
@@ -83,6 +102,38 @@ Options utiles : `--date AAAA-MM-JJ` (republier un jour donné),
 Le pont affiche chaque étape et échoue avec un message clair si
 l'application ou Ollama ne répond pas.
 
+## Hébergement local de l'application
+
+Pour que le pont ait une cible sur le PC, l'application roule aussi en
+local (c'est l'instance complète, avec Hermes) :
+
+1. Récupérer le code et installer les dépendances :
+   `git clone https://github.com/OpenNovaLab/OpenNova-Finance.git`,
+   puis `pnpm install` dans le dossier.
+2. Créer un fichier `.env.local` à la racine avec le mode local :
+
+   ```
+   HERMES_ENABLED=true
+   NEXT_PUBLIC_HERMES_ENABLED=true
+   HERMES_BRIDGE_KEY=<la même clé que le pont>
+   ACCESS_SESSION_SECRET=<un secret que vous générez vous-même, 64 hex>
+   ```
+
+   `ACCESS_SESSION_SECRET` protège l'accès au tableau de bord : en
+   local, vous le définissez vous-même. Les variables `NEXT_PUBLIC_*`
+   sont figées au moment du build : les définir **avant** l'étape 3, et
+   refaire le build si elles changent.
+3. Construire et démarrer : `pnpm build` puis `pnpm start`
+   (écoute sur http://localhost:3000 — la cible par défaut du pont).
+4. Lancement durable : créer une deuxième tâche planifiée Windows
+   « OpenNova-Finance local », déclencheur « À l'ouverture de session »,
+   action : `pnpm start` dans le dossier de l'app (ou un petit fichier
+   `.cmd` qui fait `cd` + `pnpm start`). L'application redémarre alors
+   toute seule à chaque session Windows.
+
+La copie Vercel n'a rien de tout ça à définir : sans `HERMES_ENABLED`,
+les fonctions Hermes y restent désactivées proprement.
+
 ## Tâche planifiée Windows (briefing quotidien)
 
 1. Ouvrir le **Planificateur de tâches** → « Créer une tâche de base ».
@@ -92,5 +143,23 @@ l'application ou Ollama ne répond pas.
    - Programme : `python.exe` (chemin complet si nécessaire)
    - Arguments : `C:\chemin\vers\OpenNova-Finance\tools\hermes-bridge\hermes_bridge.py`
    - Démarrer dans : `C:\chemin\vers\OpenNova-Finance\tools\hermes-bridge`
-4. Cocher « Exécuter seulement
-...[truncated 1517 chars]
+4. Cocher « Exécuter seulement quand l'utilisateur est connecté »
+   (le pont a besoin de la session où Ollama roule).
+
+## Dépannage
+
+| Symptôme | Cause probable |
+| --- | --- |
+| L'application répond 503 « hermes_disabled » | Fonctions Hermes désactivées sur cette instance : définir `HERMES_ENABLED=true` côté serveur (c'est le comportement voulu sur la copie Vercel) |
+| L'application répond 503 « hermes_not_configured » | `HERMES_BRIDGE_KEY` absente ou trop courte côté serveur (instance locale ou Vercel) |
+| L'application répond 401 | La clé du PC et celle du serveur diffèrent |
+| « Ollama injoignable » | Ollama n'est pas démarré sur le PC |
+| « instantané vide » | Synchronisation non activée dans l'app : activer la synchro ou utiliser `--snapshot-file` |
+
+## Sécurité
+
+- Aucun port entrant : le pont initie toutes les connexions.
+- La clé ne quitte jamais le PC et le serveur de l'application ; elle
+  n'est ni dans le code ni dans le dépôt.
+- Lecture et synthèse seulement : le pont ne peut déclencher aucune
+  transaction. Les décisions d'achat et de vente restent à Alex.

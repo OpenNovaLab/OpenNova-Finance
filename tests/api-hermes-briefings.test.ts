@@ -44,6 +44,7 @@ const postBriefing = (body: unknown, headers: Record<string, string> = {}) =>
 describe("/api/hermes/briefings", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("HERMES_ENABLED", "true")
     vi.stubEnv("HERMES_BRIDGE_KEY", TEST_KEY)
   })
 
@@ -132,6 +133,28 @@ describe("/api/hermes/briefings", () => {
     expect(response.status).toBe(200)
     const payload = (await response.json()) as { replaced: boolean }
     expect(payload.replaced).toBe(true)
+  })
+
+  it("instance désactivée (hybride) : POST propre 503 hermes_disabled, GET dégradé sans erreur", async () => {
+    vi.stubEnv("HERMES_ENABLED", "")
+
+    const postResponse = await postBriefing(validBriefing, { "x-hermes-key": TEST_KEY })
+    expect(postResponse.status).toBe(503)
+    const postPayload = (await postResponse.json()) as { error: string }
+    expect(postPayload.error).toBe("hermes_disabled")
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+
+    const getResponse = await GET()
+    expect(getResponse.status).toBe(200)
+    const getPayload = (await getResponse.json()) as {
+      enabled: boolean
+      latest: unknown
+      history: unknown[]
+    }
+    expect(getPayload.enabled).toBe(false)
+    expect(getPayload.latest).toBeNull()
+    expect(getPayload.history).toEqual([])
+    expect(mocks.listHermesBriefings).not.toHaveBeenCalled()
   })
 
   it("GET retourne latest=null et un historique vide quand rien n'a été reçu", async () => {

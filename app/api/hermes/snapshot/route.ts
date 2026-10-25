@@ -4,6 +4,7 @@ import {
   isValidHermesKey,
   readHermesKey,
 } from "@/lib/hermes-auth"
+import { isHermesEnabled } from "@/lib/hermes-config"
 import { readPortfolioSyncStore } from "@/lib/portfolio-sync-storage"
 
 /**
@@ -22,6 +23,17 @@ import { readPortfolioSyncStore } from "@/lib/portfolio-sync-storage"
  */
 
 export const GET = async (request: Request) => {
+  if (!isHermesEnabled()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "hermes_disabled",
+        message:
+          "Les fonctions Hermes sont désactivées sur cette instance (disponibles sur l'instance locale seulement).",
+      },
+      { status: 503 }
+    )
+  }
   if (!isHermesBridgeConfigured()) {
     return NextResponse.json(
       {

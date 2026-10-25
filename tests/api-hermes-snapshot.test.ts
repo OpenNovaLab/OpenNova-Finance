@@ -62,6 +62,7 @@ const getSnapshot = (headers: Record<string, string> = {}) =>
 describe("/api/hermes/snapshot", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("HERMES_ENABLED", "true")
     vi.stubEnv("HERMES_BRIDGE_KEY", TEST_KEY)
   })
 
@@ -85,6 +86,15 @@ describe("/api/hermes/snapshot", () => {
     vi.stubEnv("HERMES_BRIDGE_KEY", "")
     const response = await getSnapshot({ "x-hermes-key": TEST_KEY })
     expect(response.status).toBe(503)
+  })
+
+  it("instance désactivée (hybride) : 503 hermes_disabled, sans lire le magasin", async () => {
+    vi.stubEnv("HERMES_ENABLED", "")
+    const response = await getSnapshot({ "x-hermes-key": TEST_KEY })
+    expect(response.status).toBe(503)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe("hermes_disabled")
+    expect(mocks.readPortfolioSyncStore).not.toHaveBeenCalled()
   })
 
   it("retourne hasState=false quand aucun état n'est synchronisé", async () => {

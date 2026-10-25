@@ -8,6 +8,7 @@ import {
   listHermesBriefings,
   upsertHermesBriefing,
 } from "@/lib/hermes-briefings-storage"
+import { isHermesEnabled } from "@/lib/hermes-config"
 import { hermesBriefingInputSchema } from "@/lib/hermes-types"
 
 /**
@@ -22,6 +23,17 @@ import { hermesBriefingInputSchema } from "@/lib/hermes-types"
  */
 
 const HISTORY_RESPONSE_LIMIT = 10
+
+const disabled = () =>
+  NextResponse.json(
+    {
+      ok: false,
+      error: "hermes_disabled",
+      message:
+        "Les fonctions Hermes sont désactivées sur cette instance (disponibles sur l'instance locale seulement).",
+    },
+    { status: 503 }
+  )
 
 const notConfigured = () =>
   NextResponse.json(
@@ -45,6 +57,9 @@ const unauthorized = () =>
   )
 
 export const POST = async (request: Request) => {
+  if (!isHermesEnabled()) {
+    return disabled()
+  }
   if (!isHermesBridgeConfigured()) {
     return notConfigured()
   }
@@ -80,10 +95,19 @@ export const POST = async (request: Request) => {
 }
 
 export const GET = async () => {
+  if (!isHermesEnabled()) {
+    // Dégradation propre : l'interface affiche l'état « instance locale
+    // seulement » au lieu d'une erreur.
+    return NextResponse.json(
+      { ok: true, enabled: false, latest: null, history: [] },
+      { status: 200 }
+    )
+  }
   const briefings = await listHermesBriefings(HISTORY_RESPONSE_LIMIT)
   return NextResponse.json(
     {
       ok: true,
+      enabled: true,
       latest: briefings[0] ?? null,
       history: briefings,
     },
