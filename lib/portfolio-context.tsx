@@ -385,6 +385,19 @@ const normalizeLastSaved = (value: unknown): string => {
   return new Date().toISOString()
 }
 
+const isLegacyDemoStockActions = (actions: unknown): boolean => {
+  if (!Array.isArray(actions) || actions.length !== 3) return false
+  const symbols = actions
+    .map((item) =>
+      item && typeof item === "object" && "symbol" in item && typeof item.symbol === "string"
+        ? item.symbol.toUpperCase()
+        : ""
+    )
+    .sort()
+    .join(",")
+  return symbols === "AAPL,MSFT,TSLA"
+}
+
 const migrateToV2 = (input: {
   accounts: unknown
   transactions: unknown
@@ -397,7 +410,9 @@ const migrateToV2 = (input: {
     accounts: normalizeAccounts(input.accounts) ?? DEFAULT_ACCOUNTS,
     transactions: normalizeTransactions(input.transactions) ?? DEFAULT_TRANSACTIONS,
     goals: normalizeGoals(input.goals) ?? DEFAULT_GOALS,
-    stockActions: normalizeStockActions(input.stockActions) ?? DEFAULT_STOCK_ACTIONS,
+    stockActions: isLegacyDemoStockActions(input.stockActions)
+      ? DEFAULT_STOCK_ACTIONS
+      : normalizeStockActions(input.stockActions) ?? DEFAULT_STOCK_ACTIONS,
     lastSaved: normalizeLastSaved(input.lastSaved),
   }
 }
@@ -405,11 +420,17 @@ const migrateToV2 = (input: {
 const loadPortfolioState = (): PortfolioStateV2 | null => {
   const stored = loadJson<PortfolioStateV2>(STORAGE_KEYS.STATE)
   if (stored.exists && stored.value && isPortfolioStateV2(stored.value)) {
+    if (isLegacyDemoStockActions(stored.value.stockActions)) {
+      stored.value.stockActions = DEFAULT_STOCK_ACTIONS
+    }
     return stored.value
   }
 
   const backup = loadJson<PortfolioStateV2>(STORAGE_KEYS.BACKUP)
   if (backup.exists && backup.value && isPortfolioStateV2(backup.value)) {
+    if (isLegacyDemoStockActions(backup.value.stockActions)) {
+      backup.value.stockActions = DEFAULT_STOCK_ACTIONS
+    }
     return backup.value
   }
 
