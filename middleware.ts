@@ -15,11 +15,27 @@ function isPublicPath(pathname: string): boolean {
   return false
 }
 
+/**
+ * Routes de service du pont local Hermes : pas de session navigateur,
+ * l'authentification se fait dans la route elle-même, par la clé de
+ * service HERMES_BRIDGE_KEY (comparaison à temps constant). Seules ces
+ * deux combinaisons méthode + chemin sont exemptées ; la lecture des
+ * briefings pour l'interface (GET /api/hermes/briefings) reste protégée
+ * par la session d'accès.
+ */
+function isServicePath(request: NextRequest): boolean {
+  const { pathname } = request.nextUrl
+  if (pathname === "/api/hermes/briefings" && request.method === "POST") return true
+  if (pathname === "/api/hermes/snapshot" && request.method === "GET") return true
+  return false
+}
+
 export async function middleware(request: NextRequest) {
   if (isBypassEnabled()) return NextResponse.next()
 
   const { pathname } = request.nextUrl
   if (isPublicPath(pathname)) return NextResponse.next()
+  if (isServicePath(request)) return NextResponse.next()
 
   const isProd = process.env.NODE_ENV === "production"
   const secret = process.env.ACCESS_SESSION_SECRET
