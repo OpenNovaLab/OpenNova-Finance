@@ -20,6 +20,21 @@ export const HERMES_BRIEFING_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 export const hermesBriefingSourceSchema = z.enum(["hermes", "nova"])
 export type HermesBriefingSource = z.infer<typeof hermesBriefingSourceSchema>
 
+/**
+ * Libellés d'affichage des sources dans l'interface. Les deux agents
+ * d'Alex s'appellent « Nova » : son agent local (propulsé par Hermes)
+ * et son assistante Muse infonuagique. Ces libellés lèvent
+ * l'ambiguïté ; les valeurs d'API restent « hermes » et « nova ».
+ */
+export const HERMES_BRIEFING_SOURCE_LABELS: Record<HermesBriefingSource, string> = {
+  hermes: "Nova · Hermes (local)",
+  nova: "Nova · Muse",
+}
+
+export function hermesBriefingSourceLabel(source: HermesBriefingSource): string {
+  return HERMES_BRIEFING_SOURCE_LABELS[source]
+}
+
 export const hermesBriefingMetadataSchema = z
   .object({
     source: z.string().min(1).max(80).optional(),

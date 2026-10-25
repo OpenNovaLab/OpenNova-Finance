@@ -149,7 +149,7 @@ export default function Content() {
                   Briefings
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Synthèses quotidiennes — Hermes en local, Nova en infonuagique.
+                  Synthèses quotidiennes — Nova · Hermes (local) et Nova · Muse.
                 </p>
               </div>
             </div>
