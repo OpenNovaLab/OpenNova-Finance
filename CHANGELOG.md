@@ -1,12 +1,5 @@
 # 📋 Changelog - OpenNova Stock Analysis System
 
-## [0.1.1] - 2026-02-17
-
-### ✅ Release readiness prep
-- Bump version applicative de `0.1.0` vers `0.1.1` (`package.json`).
-- Mise à jour de l’aperçu visuel du README avec une capture plus récente du dashboard.
-- Préparation des notes de release initiales (draft) pour faciliter la première publication/tag.
-
 ## [1.0.0] - 2026-02-09
 
 ### 🎉 Initial Release
@@ -232,6 +225,13 @@ Built with:
 - **UI**: Kokonut UI + Radix UI + Tailwind
 - **IA**: Integrated with GPT-5.3-Codex
 - **Storage**: Browser localStorage
+
+## [0.1.1] - 2026-02-17
+
+### ✅ Release readiness prep
+- Bump version applicative de `0.1.0` vers `0.1.1` (`package.json`).
+- Mise à jour de l’aperçu visuel du README avec une capture plus récente du dashboard.
+- Préparation des notes de release initiales (draft) pour faciliter la première publication/tag.
 
 ---
 
