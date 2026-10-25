@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import {
-  isHermesBridgeConfigured,
-  isValidHermesKey,
-  readHermesKey,
+  isAnyServiceKeyConfigured,
+  matchServiceKeySource,
+  readServiceKey,
 } from "@/lib/hermes-auth"
 import {
   listHermesBriefings,
@@ -14,9 +14,12 @@ import { hermesBriefingInputSchema } from "@/lib/hermes-types"
 /**
  * Briefings Hermes (phase 1 de l'intégration Hermes × OpenNova-Finance).
  *
- * POST — ingestion par le pont local (tools/hermes-bridge/), authentifiée
- * par la clé de service HERMES_BRIDGE_KEY. Le middleware exempte ce POST
- * précis de la session navigateur : la clé de service fait foi ici.
+ * POST — ingestion des briefings, par deux sources possibles : le pont
+ * local (source « hermes », clé HERMES_BRIDGE_KEY) et l'assistante
+ * infonuagique Nova (source « nova », clé NOVA_BRIDGE_KEY). La source
+ * déclarée dans le payload doit correspondre à la clé utilisée, sinon
+ * 403. Le middleware exempte ce POST précis de la session navigateur :
+ * la clé de service fait foi ici.
  *
  * GET — lecture pour l'interface (dernier briefing + historique récent).
  * Protégé par la session d'accès, comme les autres routes de l'UI.
@@ -41,7 +44,7 @@ const notConfigured = () =>
       ok: false,
       error: "hermes_not_configured",
       message:
-        "Le pont Hermes n'est pas configuré côté serveur (variable HERMES_BRIDGE_KEY absente ou trop courte).",
+        "Aucune clé de service n'est configurée côté serveur (HERMES_BRIDGE_KEY / NOVA_BRIDGE_KEY absentes ou trop courtes).",
     },
     { status: 503 }
   )
@@ -51,19 +54,30 @@ const unauthorized = () =>
     {
       ok: false,
       error: "unauthorized",
-      message: "Clé de service Hermes absente ou invalide.",
+      message: "Clé de service absente ou invalide.",
     },
     { status: 401 }
+  )
+
+const sourceMismatch = () =>
+  NextResponse.json(
+    {
+      ok: false,
+      error: "source_mismatch",
+      message: "La source déclarée ne correspond pas à la clé de service utilisée.",
+    },
+    { status: 403 }
   )
 
 export const POST = async (request: Request) => {
   if (!isHermesEnabled()) {
     return disabled()
   }
-  if (!isHermesBridgeConfigured()) {
+  if (!isAnyServiceKeyConfigured()) {
     return notConfigured()
   }
-  if (!isValidHermesKey(readHermesKey(request))) {
+  const keySource = matchServiceKeySource(readServiceKey(request))
+  if (!keySource) {
     return unauthorized()
   }
 
@@ -88,6 +102,10 @@ export const POST = async (request: Request) => {
       },
       { status: 400 }
     )
+  }
+
+  if (parsed.data.source !== keySource) {
+    return sourceMismatch()
   }
 
   const { briefing, replaced } = await upsertHermesBriefing(parsed.data)

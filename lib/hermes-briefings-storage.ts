@@ -16,8 +16,9 @@ import {
  * un fichier JSON sous data/ (ignoré par git), normalisé à la lecture.
  *
  * Historique borné : au plus HERMES_BRIEFINGS_HISTORY_LIMIT briefings,
- * un seul par date (une republication le même jour remplace le précédent,
- * ce qui rend les réessais du pont idempotents).
+ * un seul par couple (date, source) — Hermes local et Nova peuvent donc
+ * publier chacun leur briefing le même jour ; une republication par la
+ * même source remplace la précédente (réessais idempotents).
  */
 
 const DATA_DIR = path.join(process.cwd(), "data")
@@ -67,21 +68,25 @@ export type UpsertHermesBriefingResult = {
   replaced: boolean
 }
 
-/** Insère un briefing, ou remplace celui de la même date s'il existe. */
+/** Insère un briefing, ou remplace celui de même date et même source. */
 export const upsertHermesBriefing = async (
   input: HermesBriefingInput
 ): Promise<UpsertHermesBriefingResult> => {
   const parsedInput = hermesBriefingInputSchema.parse(input)
   const store = await readHermesBriefingStore()
 
-  const existing = store.briefings.find((briefing) => briefing.date === parsedInput.date)
+  const existing = store.briefings.find(
+    (briefing) => briefing.date === parsedInput.date && briefing.source === parsedInput.source
+  )
   const briefing = hermesBriefingSchema.parse({
     ...parsedInput,
-    id: existing?.id ?? `hermes-${parsedInput.date}`,
+    id: existing?.id ?? `${parsedInput.source}-${parsedInput.date}`,
     recuLe: new Date().toISOString(),
   })
 
-  const others = store.briefings.filter((item) => item.date !== parsedInput.date)
+  const others = store.briefings.filter(
+    (item) => !(item.date === parsedInput.date && item.source === parsedInput.source)
+  )
   await writeHermesBriefingStore({ briefings: [briefing, ...others] })
 
   return { briefing, replaced: Boolean(existing) }

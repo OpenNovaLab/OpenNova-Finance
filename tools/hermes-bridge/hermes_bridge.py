@@ -84,7 +84,7 @@ def fetch_snapshot(base_url: str, bridge_key: str) -> dict:
     _, payload = http_json(
         "GET",
         f"{base_url}/api/hermes/snapshot",
-        headers={"x-hermes-key": bridge_key},
+        headers={"x-bridge-key": bridge_key},
         timeout=30,
     )
     return payload
@@ -171,7 +171,7 @@ def post_briefing(base_url: str, payload: dict, bridge_key: str):
         headers={
             "Accept": "application/json",
             "Content-Type": "application/json; charset=utf-8",
-            "x-hermes-key": bridge_key,
+            "x-bridge-key": bridge_key,
         },
         method="POST",
     )
@@ -275,6 +275,7 @@ def main() -> int:
     symboles = snapshot.get("symboles") or []
     payload = {
         "date": args.date,
+        "source": "hermes",
         "titre": title,
         "contenuMarkdown": content,
         "metadonnees": {

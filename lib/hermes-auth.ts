@@ -1,25 +1,36 @@
 import { createHash, timingSafeEqual } from "crypto"
+import type { HermesBriefingSource } from "@/lib/hermes-types"
 
 /**
- * Authentification du pont local Hermes.
+ * Authentification des sources de briefings.
  *
- * Le pont s'authentifie avec une clé de service dédiée, transmise dans
- * l'en-tête `x-hermes-key` ou `Authorization: Bearer <clé>`. La clé
- * attendue est lue depuis la variable d'environnement HERMES_BRIDGE_KEY
- * (jamais dans le code). La comparaison est faite à temps constant sur
- * les empreintes SHA-256 des deux valeurs, pour ne fuiter ni le contenu
- * ni la longueur de la clé.
+ * Deux clés de service distinctes, une par source :
+ * - HERMES_BRIDGE_KEY : le pont local (source « hermes ») ;
+ * - NOVA_BRIDGE_KEY : l'assistante infonuagique d'Alex (source « nova »).
+ *
+ * La clé est transmise dans l'en-tête `x-bridge-key` (ou l'ancien
+ * `x-hermes-key`, ou `Authorization: Bearer <clé>`). La source déclarée
+ * dans un payload d'ingestion doit correspondre à la clé utilisée :
+ * chaque clé est comparée à temps constant, sur les empreintes SHA-256
+ * des valeurs, pour ne fuiter ni le contenu ni la longueur.
  */
 
-export const HERMES_BRIDGE_KEY_ENV = "HERMES_BRIDGE_KEY"
+const KEY_ENV_BY_SOURCE: Record<HermesBriefingSource, string> = {
+  hermes: "HERMES_BRIDGE_KEY",
+  nova: "NOVA_BRIDGE_KEY",
+}
 
-/** Longueur minimale acceptée pour la clé configurée côté serveur. */
-export const HERMES_BRIDGE_KEY_MIN_LENGTH = 16
+const SOURCES: HermesBriefingSource[] = ["hermes", "nova"]
 
-export const readHermesKey = (request: Request): string | null => {
-  const fromHeader = request.headers.get("x-hermes-key")
-  if (fromHeader && fromHeader.trim().length > 0) {
-    return fromHeader.trim()
+/** Longueur minimale acceptée pour une clé configurée côté serveur. */
+export const SERVICE_KEY_MIN_LENGTH = 16
+
+export const readServiceKey = (request: Request): string | null => {
+  for (const header of ["x-bridge-key", "x-hermes-key"]) {
+    const value = request.headers.get(header)
+    if (value && value.trim().length > 0) {
+      return value.trim()
+    }
   }
 
   const auth = request.headers.get("authorization")
@@ -33,23 +44,35 @@ export const readHermesKey = (request: Request): string | null => {
   return null
 }
 
-export const getConfiguredHermesKey = (): string | null => {
-  const value = process.env[HERMES_BRIDGE_KEY_ENV]?.trim()
-  if (!value || value.length < HERMES_BRIDGE_KEY_MIN_LENGTH) {
+export const getConfiguredServiceKey = (source: HermesBriefingSource): string | null => {
+  const value = process.env[KEY_ENV_BY_SOURCE[source]]?.trim()
+  if (!value || value.length < SERVICE_KEY_MIN_LENGTH) {
     return null
   }
   return value
 }
 
-export const isHermesBridgeConfigured = (): boolean => getConfiguredHermesKey() !== null
+/** Vrai si au moins une des deux clés de service est configurée. */
+export const isAnyServiceKeyConfigured = (): boolean =>
+  SOURCES.some((source) => getConfiguredServiceKey(source) !== null)
 
 const sha256 = (value: string) => createHash("sha256").update(value, "utf-8").digest()
 
-/** Comparaison à temps constant entre la clé fournie et la clé configurée. */
-export const isValidHermesKey = (provided: string | null): boolean => {
-  const configured = getConfiguredHermesKey()
-  if (!configured || !provided) {
-    return false
+/**
+ * Identifie la source à laquelle appartient la clé fournie, en
+ * comparant à temps constant avec chaque clé configurée.
+ * Retourne null si la clé est absente ou ne correspond à aucune source.
+ */
+export const matchServiceKeySource = (provided: string | null): HermesBriefingSource | null => {
+  if (!provided) {
+    return null
   }
-  return timingSafeEqual(sha256(provided), sha256(configured))
+  const providedDigest = sha256(provided)
+  for (const source of SOURCES) {
+    const configured = getConfiguredServiceKey(source)
+    if (configured && timingSafeEqual(providedDigest, sha256(configured))) {
+      return source
+    }
+  }
+  return null
 }

@@ -13,9 +13,11 @@ vi.mock("@/lib/hermes-briefings-storage", () => ({
 import { GET, POST } from "@/app/api/hermes/briefings/route"
 
 const TEST_KEY = "hermes-test-key-0123456789abcdef"
+const TEST_NOVA_KEY = "nova-test-key-0123456789abcdef00"
 
 const validBriefing = {
   date: "2026-10-25",
+  source: "hermes" as const,
   titre: "Briefing Hermes du 2026-10-25",
   contenuMarkdown: "# Briefing du 2026-10-25\n\n## Vue d'ensemble\n\nSynthèse factuelle.",
   metadonnees: {
@@ -46,6 +48,7 @@ describe("/api/hermes/briefings", () => {
     vi.clearAllMocks()
     vi.stubEnv("HERMES_ENABLED", "true")
     vi.stubEnv("HERMES_BRIDGE_KEY", TEST_KEY)
+    vi.stubEnv("NOVA_BRIDGE_KEY", TEST_NOVA_KEY)
   })
 
   afterEach(() => {
@@ -72,10 +75,42 @@ describe("/api/hermes/briefings", () => {
     expect(response.status).toBe(201)
   })
 
-  it("retourne 503 si la clé n'est pas configurée côté serveur", async () => {
+  it("retourne 503 si aucune clé n'est configurée côté serveur", async () => {
     vi.stubEnv("HERMES_BRIDGE_KEY", "")
-    const response = await postBriefing(validBriefing, { "x-hermes-key": TEST_KEY })
+    vi.stubEnv("NOVA_BRIDGE_KEY", "")
+    const response = await postBriefing(validBriefing, { "x-bridge-key": TEST_KEY })
     expect(response.status).toBe(503)
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("ingère un briefing Nova avec sa propre clé (source nova)", async () => {
+    const novaBriefing = {
+      ...validBriefing,
+      source: "nova" as const,
+      titre: "Point hebdomadaire Nova du 2026-10-25",
+    }
+    const storedNova = { ...novaBriefing, id: "nova-2026-10-25", recuLe: "2026-10-25T13:00:00.000Z" }
+    mocks.upsertHermesBriefing.mockResolvedValueOnce({ briefing: storedNova, replaced: false })
+
+    const response = await postBriefing(novaBriefing, { "x-bridge-key": TEST_NOVA_KEY })
+    expect(response.status).toBe(201)
+    expect(mocks.upsertHermesBriefing).toHaveBeenCalledWith(novaBriefing)
+  })
+
+  it("rejette la clé Hermes tentant de publier sous la source nova (403)", async () => {
+    const response = await postBriefing(
+      { ...validBriefing, source: "nova" as const },
+      { "x-bridge-key": TEST_KEY }
+    )
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe("source_mismatch")
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("rejette la clé Nova tentant de publier sous la source hermes (403)", async () => {
+    const response = await postBriefing(validBriefing, { "x-bridge-key": TEST_NOVA_KEY })
+    expect(response.status).toBe(403)
     expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
   })
 
@@ -124,7 +159,9 @@ describe("/api/hermes/briefings", () => {
       history: (typeof storedBriefing)[]
     }
     expect(getPayload.latest?.id).toBe("hermes-2026-10-25")
+    expect(getPayload.latest?.source).toBe("hermes")
     expect(getPayload.history).toHaveLength(1)
+    expect(getPayload.history[0]?.source).toBe("hermes")
   })
 
   it("signale un remplacement (200) quand la date existe déjà", async () => {

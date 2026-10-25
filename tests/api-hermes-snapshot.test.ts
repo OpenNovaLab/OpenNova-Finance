@@ -11,6 +11,7 @@ vi.mock("@/lib/portfolio-sync-storage", () => ({
 import { GET } from "@/app/api/hermes/snapshot/route"
 
 const TEST_KEY = "hermes-test-key-0123456789abcdef"
+const TEST_NOVA_KEY = "nova-test-key-0123456789abcdef00"
 
 const sampleState = {
   version: 2 as const,
@@ -64,6 +65,7 @@ describe("/api/hermes/snapshot", () => {
     vi.clearAllMocks()
     vi.stubEnv("HERMES_ENABLED", "true")
     vi.stubEnv("HERMES_BRIDGE_KEY", TEST_KEY)
+    vi.stubEnv("NOVA_BRIDGE_KEY", TEST_NOVA_KEY)
   })
 
   afterEach(() => {
@@ -82,10 +84,17 @@ describe("/api/hermes/snapshot", () => {
     expect(mocks.readPortfolioSyncStore).not.toHaveBeenCalled()
   })
 
-  it("retourne 503 si la clé n'est pas configurée côté serveur", async () => {
+  it("retourne 503 si aucune clé n'est configurée côté serveur", async () => {
     vi.stubEnv("HERMES_BRIDGE_KEY", "")
-    const response = await getSnapshot({ "x-hermes-key": TEST_KEY })
+    vi.stubEnv("NOVA_BRIDGE_KEY", "")
+    const response = await getSnapshot({ "x-bridge-key": TEST_KEY })
     expect(response.status).toBe(503)
+  })
+
+  it("accepte aussi la clé Nova pour l'instantané", async () => {
+    mocks.readPortfolioSyncStore.mockResolvedValue({ users: {} })
+    const response = await getSnapshot({ "x-bridge-key": TEST_NOVA_KEY })
+    expect(response.status).toBe(200)
   })
 
   it("instance désactivée (hybride) : 503 hermes_disabled, sans lire le magasin", async () => {

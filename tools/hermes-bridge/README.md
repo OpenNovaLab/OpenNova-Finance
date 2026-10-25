@@ -54,7 +54,11 @@ copie ne bloque jamais l'instance locale.
 
 ## La clé de service (à faire une seule fois)
 
-Le pont s'authentifie par une clé dédiée, `HERMES_BRIDGE_KEY` :
+Le pont s'authentifie par une clé dédiée, `HERMES_BRIDGE_KEY`. Cette
+clé ne peut publier que des briefings de source « hermes » : l'autre
+source, « nova », appartient à l'assistante infonuagique d'Alex et
+s'authentifie avec sa propre clé (`NOVA_BRIDGE_KEY`, côté serveur
+seulement — rien à configurer sur le PC pour elle) :
 
 1. Générer une clé aléatoire (PowerShell) :
    `python -c "import secrets; print(secrets.token_hex(32))"`

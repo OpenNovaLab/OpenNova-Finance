@@ -11,6 +11,15 @@ import { z } from "zod"
 
 export const HERMES_BRIEFING_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
+/**
+ * Source d'un briefing : « hermes » (agent local d'Alex, via le pont
+ * local) ou « nova » (l'assistante infonuagique d'Alex : macro,
+ * résultats, point hebdomadaire). Chaque source s'authentifie avec sa
+ * propre clé de service et ne peut publier que sous son nom.
+ */
+export const hermesBriefingSourceSchema = z.enum(["hermes", "nova"])
+export type HermesBriefingSource = z.infer<typeof hermesBriefingSourceSchema>
+
 export const hermesBriefingMetadataSchema = z
   .object({
     source: z.string().min(1).max(80).optional(),
@@ -25,6 +34,7 @@ export const hermesBriefingInputSchema = z
     date: z
       .string()
       .regex(HERMES_BRIEFING_DATE_REGEX, "La date doit suivre le format AAAA-MM-JJ."),
+    source: hermesBriefingSourceSchema,
     titre: z.string().min(1).max(200),
     contenuMarkdown: z.string().min(1).max(50_000),
     metadonnees: hermesBriefingMetadataSchema.optional(),

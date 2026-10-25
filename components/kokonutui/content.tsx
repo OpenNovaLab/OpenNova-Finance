@@ -146,10 +146,10 @@ export default function Content() {
               </div>
               <div>
                 <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                  Briefing Hermes
+                  Briefings
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Synthèse quotidienne générée localement par votre agent Hermes.
+                  Synthèses quotidiennes — Hermes en local, Nova en infonuagique.
                 </p>
               </div>
             </div>

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import {
-  isHermesBridgeConfigured,
-  isValidHermesKey,
-  readHermesKey,
+  isAnyServiceKeyConfigured,
+  matchServiceKeySource,
+  readServiceKey,
 } from "@/lib/hermes-auth"
 import { isHermesEnabled } from "@/lib/hermes-config"
 import { readPortfolioSyncStore } from "@/lib/portfolio-sync-storage"
@@ -19,7 +19,8 @@ import { readPortfolioSyncStore } from "@/lib/portfolio-sync-storage"
  * Hypothèse documentée : application mono-utilisateur. Si le magasin de
  * synchronisation contient plus d'un utilisateur, l'instantané refuse de
  * deviner (409) plutôt que d'exposer les données du mauvais compte.
- * Authentification : clé de service HERMES_BRIDGE_KEY, comme l'ingestion.
+ * Authentification : l'une ou l'autre des clés de service
+ * (HERMES_BRIDGE_KEY ou NOVA_BRIDGE_KEY), comme l'ingestion.
  */
 
 export const GET = async (request: Request) => {
@@ -34,23 +35,23 @@ export const GET = async (request: Request) => {
       { status: 503 }
     )
   }
-  if (!isHermesBridgeConfigured()) {
+  if (!isAnyServiceKeyConfigured()) {
     return NextResponse.json(
       {
         ok: false,
         error: "hermes_not_configured",
         message:
-          "Le pont Hermes n'est pas configuré côté serveur (variable HERMES_BRIDGE_KEY absente ou trop courte).",
+          "Aucune clé de service n'est configurée côté serveur (HERMES_BRIDGE_KEY / NOVA_BRIDGE_KEY absentes ou trop courtes).",
       },
       { status: 503 }
     )
   }
-  if (!isValidHermesKey(readHermesKey(request))) {
+  if (!matchServiceKeySource(readServiceKey(request))) {
     return NextResponse.json(
       {
         ok: false,
         error: "unauthorized",
-        message: "Clé de service Hermes absente ou invalide.",
+        message: "Clé de service absente ou invalide.",
       },
       { status: 401 }
     )
