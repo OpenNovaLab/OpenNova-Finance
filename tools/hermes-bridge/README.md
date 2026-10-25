@@ -56,7 +56,7 @@ copie ne bloque jamais l'instance locale.
 
 Le pont s'authentifie par une clé dédiée, `HERMES_BRIDGE_KEY`. Cette
 clé ne peut publier que des briefings de source « hermes » : l'autre
-source, « nova », appartient à l'assistante infonuagique d'Alex et
+source, « nova », appartient à Nova · Muse, l'assistante infonuagique d'Alex, et
 s'authentifie avec sa propre clé (`NOVA_BRIDGE_KEY`, côté serveur
 seulement — rien à configurer sur le PC pour elle) :
 
