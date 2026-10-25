@@ -150,6 +150,63 @@ les fonctions Hermes y restent désactivées proprement.
 4. Cocher « Exécuter seulement quand l'utilisateur est connecté »
    (le pont a besoin de la session où Ollama roule).
 
+## Ramassage des briefings Nova · Muse
+
+Les briefings de la deuxième source, « Nova · Muse » (l'assistante
+infonuagique d'Alex : macro, nouvelles, point hebdomadaire), arrivent par
+un **modèle par tirage**, décidé le 25 octobre 2026. Nova ne peut pas
+publier directement sur l'instance locale : la substitution
+d'identifiants de sa plateforme ne couvre pas la route Tailscale. Elle
+dépose donc ses briefings en fichiers JSON (un par date,
+`AAAA-MM-JJ.json`) dans le dossier `nova-briefings/` de la branche
+**`nova-outbox`** du dépôt — voir `nova-briefings/README.md` sur cette
+branche. Le script `nova_pickup.py` les ramasse et les publie ici.
+
+```powershell
+cd tools\hermes-bridge
+python nova_pickup.py --dry-run   # première fois : liste et valide, ne publie rien
+python nova_pickup.py             # ramassage réel
+```
+
+À chaque passage, le script :
+
+1. récupère la branche (`git fetch origin nova-outbox`) ;
+2. compare l'empreinte SHA-256 de chaque fichier à son état local
+   (`.nova-pickup-state.json`, ignoré par git) et ne traite que les
+   nouveaux briefings ou ceux dont le contenu a changé ;
+3. valide chaque fichier (JSON, `source` = `"nova"`, champs requis) ;
+4. le publie par `POST /api/hermes/briefings` sur l'instance locale,
+   authentifié par `NOVA_BRIDGE_KEY`. La republication est sans danger :
+   unicité par date + source côté application (201 = créé, 200 =
+   remplacé). Un fichier en échec est signalé, les autres continuent, et
+   le code de sortie est non nul si au moins un échec survient.
+
+Configuration :
+
+| Variable | Valeur | Obligatoire |
+| --- | --- | --- |
+| `NOVA_BRIDGE_KEY` | la clé « nova » de l'instance locale (même valeur que dans son `.env.local`) | oui (sauf `--dry-run`) |
+| `OPENNOVA_BASE_URL` | l'instance locale (défaut : `http://localhost:3000`) | non (défaut) |
+
+Options utiles : `--repo <clone>` (défaut : la racine du clone où vit le
+script), `--state <fichier>` (défaut :
+`tools\hermes-bridge\.nova-pickup-state.json`).
+
+Tâche planifiée Windows (ramassage automatique) : créer une tâche de
+base « Ramassage briefings Nova », déclencheur **quotidien** avec
+répétition **toutes les 30 minutes**, action « Démarrer un programme »
+(`python.exe`, arguments :
+`C:\chemin\vers\OpenNova-Finance\tools\hermes-bridge\nova_pickup.py`,
+démarrer dans le dossier du clone). La variable `NOVA_BRIDGE_KEY` doit
+être définie dans l'environnement de la tâche (variable utilisateur
+Windows, par exemple) : le script la lit, ne l'affiche jamais et ne la
+journalise pas.
+
+Sécurité : **la clé reste sur le PC** — elle n'est connue que de
+l'instance locale et de ce script. Le ramassage ne fait que des lectures
+git sur la branche `nova-outbox` et des POST vers l'instance locale ;
+aucun port entrant, aucune donnée du portefeuille ne sort du PC.
+
 ## Dépannage
 
 | Symptôme | Cause probable |
