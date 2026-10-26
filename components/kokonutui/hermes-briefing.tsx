@@ -70,12 +70,14 @@ interface BriefingsResponse {
 }
 
 export interface HermesStatus {
+  agent?: "hermes" | "muse"
   state: "working" | "idle" | "resting"
   label: string
   detail: string
   lastRun?: string
   nextRun?: string
   hardware?: string
+  model?: string
   mode?: "auto" | "manual"
   updatedAt: string
 }
@@ -199,17 +201,25 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({})
 
   const [hermesStatus, setHermesStatus] = useState<HermesStatus | null>(null)
-  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [museState, setMuseState] = useState<HermesStatus | null>(null)
+  const [activeModalAgent, setActiveModalAgent] = useState<"hermes" | "muse" | null>(null)
   const [togglingStatus, setTogglingStatus] = useState(false)
 
-  const loadHermesStatus = async () => {
+  const loadAgentsStatus = async () => {
     if (!HERMES_UI_ENABLED) return
     try {
       const response = await fetch("/api/hermes/status", { cache: "no-store" })
       if (response.ok) {
-        const payload = (await response.json()) as { ok: boolean; status: HermesStatus }
-        if (payload.ok && payload.status) {
-          setHermesStatus(payload.status)
+        const payload = (await response.json()) as {
+          ok: boolean
+          hermes?: HermesStatus
+          muse?: HermesStatus
+          status?: HermesStatus
+        }
+        if (payload.ok) {
+          if (payload.hermes) setHermesStatus(payload.hermes)
+          else if (payload.status) setHermesStatus(payload.status)
+          if (payload.muse) setMuseState(payload.muse)
         }
       }
     } catch {
@@ -217,27 +227,44 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     }
   }
 
-  const handleSetHermesState = async (nextState: "working" | "idle" | "resting") => {
+  const handleSetAgentState = async (
+    agent: "hermes" | "muse",
+    nextState: "working" | "idle" | "resting"
+  ) => {
     setTogglingStatus(true)
+    const isMuse = agent === "muse"
     try {
       const response = await fetch("/api/hermes/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          agent,
           state: nextState,
           mode: "manual",
           detail:
             nextState === "working"
-              ? "Analyse active forcée sur RTX 3080 Ti"
+              ? isMuse
+                ? "Synthèse stratégique forcée en cours (Meta AI)"
+                : "Analyse active forcée sur RTX 3080 Ti"
               : nextState === "idle"
               ? "En attente forcée · Veille active"
               : "Mis au repos par Alex · Veille inactive",
         }),
       })
       if (response.ok) {
-        const payload = (await response.json()) as { ok: boolean; status: HermesStatus }
-        if (payload.ok && payload.status) {
-          setHermesStatus(payload.status)
+        const payload = (await response.json()) as {
+          ok: boolean
+          hermes?: HermesStatus
+          muse?: HermesStatus
+          status?: HermesStatus
+        }
+        if (payload.ok) {
+          if (payload.hermes) setHermesStatus(payload.hermes)
+          if (payload.muse) setMuseState(payload.muse)
+          if (!payload.hermes && !payload.muse && payload.status) {
+            if (isMuse) setMuseState(payload.status)
+            else setHermesStatus(payload.status)
+          }
         }
       }
     } catch {
@@ -247,18 +274,24 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     }
   }
 
-  const handleResetHermesAuto = async () => {
+  const handleResetAgentAuto = async (agent: "hermes" | "muse") => {
     setTogglingStatus(true)
     try {
       const response = await fetch("/api/hermes/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "reset_auto" }),
+        body: JSON.stringify({ agent, action: "reset_auto" }),
       })
       if (response.ok) {
-        const payload = (await response.json()) as { ok: boolean; status: HermesStatus }
-        if (payload.ok && payload.status) {
-          setHermesStatus(payload.status)
+        const payload = (await response.json()) as {
+          ok: boolean
+          hermes?: HermesStatus
+          muse?: HermesStatus
+          status?: HermesStatus
+        }
+        if (payload.ok) {
+          if (payload.hermes) setHermesStatus(payload.hermes)
+          if (payload.muse) setMuseState(payload.muse)
         }
       }
     } catch {
@@ -284,7 +317,7 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     try {
       const [briefingsRes] = await Promise.all([
         fetch("/api/hermes/briefings", { cache: "no-store" }),
-        loadHermesStatus(),
+        loadAgentsStatus(),
       ])
       if (!briefingsRes.ok) throw new Error("load_failed")
       const payload = (await briefingsRes.json()) as BriefingsResponse
@@ -298,12 +331,12 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
 
   useEffect(() => {
     void loadBriefings()
-    void loadHermesStatus()
+    void loadAgentsStatus()
     const intervalId = window.setInterval(() => {
       void loadBriefings()
     }, 45_000)
     const statusIntervalId = window.setInterval(() => {
-      void loadHermesStatus()
+      void loadAgentsStatus()
     }, 15_000)
     return () => {
       window.clearInterval(intervalId)
@@ -888,7 +921,9 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
                 {/* Badge d'état interactif d'Hermes */}
                 <button
                   type="button"
-                  onClick={() => setShowStatusModal((prev) => !prev)}
+                  onClick={() =>
+                    setActiveModalAgent((prev) => (prev === "hermes" ? null : "hermes"))
+                  }
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs",
                     hermesStatus?.state === "working"
@@ -930,7 +965,59 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
                   <ChevronDown
                     className={cn(
                       "h-3 w-3 text-muted-foreground transition-transform duration-200",
-                      showStatusModal && "rotate-180"
+                      activeModalAgent === "hermes" && "rotate-180"
+                    )}
+                  />
+                </button>
+
+                {/* Badge d'état interactif de Muse */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveModalAgent((prev) => (prev === "muse" ? null : "muse"))
+                  }
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs",
+                    museState?.state === "working"
+                      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-400"
+                      : museState?.state === "idle"
+                      ? "border-amber-500/50 bg-amber-500/15 text-amber-400"
+                      : "border-indigo-400/40 bg-indigo-500/15 text-indigo-300"
+                  )}
+                  title="Cliquer pour afficher les détails et contrôler l'état de Muse"
+                >
+                  <span className="relative flex h-2 w-2">
+                    {museState?.state === "working" && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span
+                      className={cn(
+                        "relative inline-flex rounded-full h-2 w-2",
+                        museState?.state === "working"
+                          ? "bg-emerald-400"
+                          : museState?.state === "idle"
+                          ? "bg-amber-400"
+                          : "bg-indigo-400"
+                      )}
+                    ></span>
+                  </span>
+                  <span>
+                    Muse :{" "}
+                    {museState?.state === "working"
+                      ? "Au travail"
+                      : museState?.state === "idle"
+                      ? "En attente"
+                      : "Au repos"}
+                  </span>
+                  {museState?.mode === "manual" && (
+                    <span className="text-[9px] uppercase px-1 rounded bg-accent/80 text-foreground font-mono">
+                      manuel
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 text-muted-foreground transition-transform duration-200",
+                      activeModalAgent === "muse" && "rotate-180"
                     )}
                   />
                 </button>
@@ -955,121 +1042,148 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
           </div>
         </div>
 
-        {/* Panneau rétractable de contrôle et détails du statut Hermes */}
-        {showStatusModal && (
+        {/* Panneau rétractable de contrôle et détails (Hermes ou Muse) */}
+        {activeModalAgent !== null && (
           <div className="mt-3.5 pt-3 border-t border-border/60 rounded-xl bg-card/80 p-3.5 space-y-3 animate-in fade-in duration-150">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={cn(
-                    "p-2 rounded-xl border flex items-center justify-center shrink-0",
-                    hermesStatus?.state === "working"
-                      ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-400"
-                      : hermesStatus?.state === "idle"
-                      ? "border-amber-500/40 bg-amber-500/20 text-amber-400"
-                      : "border-indigo-500/40 bg-indigo-500/20 text-indigo-300"
-                  )}
-                >
-                  {hermesStatus?.state === "working" ? (
-                    <Zap className="h-4 w-4 animate-pulse" />
-                  ) : hermesStatus?.state === "idle" ? (
-                    <Clock className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-foreground">
-                      État :{" "}
-                      {hermesStatus?.state === "working"
-                        ? "🟢 Au travail"
-                        : hermesStatus?.state === "idle"
-                        ? "🟡 En attente"
-                        : "🌙 Au repos"}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      ({hermesStatus?.mode === "manual" ? "Contrôle forcé manuel" : "Planifié automatiquement selon marchés"})
-                    </span>
+            {(() => {
+              const isMuse = activeModalAgent === "muse"
+              const currentStatus = isMuse ? museState : hermesStatus
+              const agentName = isMuse
+                ? "Nova · Muse (Infonuagique · Meta AI)"
+                : "Nova · Hermes (Local · RTX 3080 Ti)"
+              const agentCadence = isMuse
+                ? "2x par jour de bourse (08:05 pré-marché & 16:35 clôture) + alertes urgentes"
+                : "Surveillance continue (toutes les 15 minutes)"
+
+              return (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={cn(
+                          "p-2 rounded-xl border flex items-center justify-center shrink-0",
+                          currentStatus?.state === "working"
+                            ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-400"
+                            : currentStatus?.state === "idle"
+                            ? "border-amber-500/40 bg-amber-500/20 text-amber-400"
+                            : "border-indigo-500/40 bg-indigo-500/20 text-indigo-300"
+                        )}
+                      >
+                        {currentStatus?.state === "working" ? (
+                          <Zap className="h-4 w-4 animate-pulse" />
+                        ) : currentStatus?.state === "idle" ? (
+                          <Clock className="h-4 w-4" />
+                        ) : (
+                          <Moon className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-foreground">
+                            {agentName} :{" "}
+                            {currentStatus?.state === "working"
+                              ? "🟢 Au travail"
+                              : currentStatus?.state === "idle"
+                              ? "🟡 En attente"
+                              : "🌙 Au repos"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            ({currentStatus?.mode === "manual"
+                              ? "Contrôle forcé manuel"
+                              : "Planification automatique"})
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {currentStatus?.detail || "En veille opérationnelle"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-muted-foreground sm:text-right space-y-0.5">
+                      <div>
+                        <span className="font-semibold text-foreground">
+                          {isMuse ? "Modèle :" : "Matériel :"}
+                        </span>{" "}
+                        {isMuse
+                          ? currentStatus?.model || "Meta AI · Llama 3.3"
+                          : currentStatus?.hardware || "RTX 3080 Ti (12GB) · Nemotron 3.5"}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-foreground">Cadence :</span>{" "}
+                        {agentCadence}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-foreground">
+                          Prochaine ronde / dépôt :
+                        </span>{" "}
+                        {currentStatus?.nextRun || (isMuse ? "08:05 EDT" : "~15 min")}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {hermesStatus?.detail || "Surveillance active des 13 actions"}
-                  </p>
-                </div>
-              </div>
 
-              <div className="text-[11px] text-muted-foreground sm:text-right space-y-0.5">
-                <div>
-                  <span className="font-semibold text-foreground">Matériel :</span>{" "}
-                  {hermesStatus?.hardware || "RTX 3080 Ti (12GB) · Nemotron 3.5"}
-                </div>
-                <div>
-                  <span className="font-semibold text-foreground">Prochaine ronde :</span>{" "}
-                  {hermesStatus?.nextRun || "~15 min"}
-                </div>
-              </div>
-            </div>
-
-            {/* Sélecteur d'état rapide pour Alex */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 text-xs">
-              <span className="text-[11px] text-muted-foreground font-medium">
-                Changer l&apos;état d&apos;Hermes :
-              </span>
-              <button
-                type="button"
-                disabled={togglingStatus}
-                onClick={() => void handleSetHermesState("working")}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
-                  hermesStatus?.state === "working" && hermesStatus?.mode === "manual"
-                    ? "bg-emerald-500 text-white shadow-xs"
-                    : "border border-border/60 bg-background/60 hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/40 text-foreground"
-                )}
-              >
-                🟢 Au travail
-              </button>
-              <button
-                type="button"
-                disabled={togglingStatus}
-                onClick={() => void handleSetHermesState("idle")}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
-                  hermesStatus?.state === "idle" && hermesStatus?.mode === "manual"
-                    ? "bg-amber-500 text-white shadow-xs"
-                    : "border border-border/60 bg-background/60 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40 text-foreground"
-                )}
-              >
-                🟡 En attente
-              </button>
-              <button
-                type="button"
-                disabled={togglingStatus}
-                onClick={() => void handleSetHermesState("resting")}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
-                  hermesStatus?.state === "resting" && hermesStatus?.mode === "manual"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "border border-border/60 bg-background/60 hover:bg-indigo-500/10 hover:text-indigo-300 hover:border-indigo-500/40 text-foreground"
-                )}
-              >
-                🌙 Au repos
-              </button>
-              <button
-                type="button"
-                disabled={togglingStatus}
-                onClick={() => void handleResetHermesAuto()}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ml-auto active:scale-95",
-                  hermesStatus?.mode === "auto"
-                    ? "border border-primary/40 bg-primary/10 text-primary font-semibold"
-                    : "border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground"
-                )}
-                title="Reprendre la planification automatique basée sur les heures de marché"
-              >
-                <RefreshCw className={cn("h-3 w-3", togglingStatus && "animate-spin")} />
-                <span>Mode Automatique</span>
-              </button>
-            </div>
+                  {/* Sélecteur d'état rapide pour Alex */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 text-xs">
+                    <span className="text-[11px] text-muted-foreground font-medium">
+                      Changer l&apos;état de {isMuse ? "Muse" : "Hermes"} :
+                    </span>
+                    <button
+                      type="button"
+                      disabled={togglingStatus}
+                      onClick={() => void handleSetAgentState(activeModalAgent, "working")}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
+                        currentStatus?.state === "working" && currentStatus?.mode === "manual"
+                          ? "bg-emerald-500 text-white shadow-xs"
+                          : "border border-border/60 bg-background/60 hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/40 text-foreground"
+                      )}
+                    >
+                      🟢 Au travail
+                    </button>
+                    <button
+                      type="button"
+                      disabled={togglingStatus}
+                      onClick={() => void handleSetAgentState(activeModalAgent, "idle")}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
+                        currentStatus?.state === "idle" && currentStatus?.mode === "manual"
+                          ? "bg-amber-500 text-white shadow-xs"
+                          : "border border-border/60 bg-background/60 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40 text-foreground"
+                      )}
+                    >
+                      🟡 En attente
+                    </button>
+                    <button
+                      type="button"
+                      disabled={togglingStatus}
+                      onClick={() => void handleSetAgentState(activeModalAgent, "resting")}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
+                        currentStatus?.state === "resting" && currentStatus?.mode === "manual"
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "border border-border/60 bg-background/60 hover:bg-indigo-500/10 hover:text-indigo-300 hover:border-indigo-500/40 text-foreground"
+                      )}
+                    >
+                      🌙 Au repos
+                    </button>
+                    <button
+                      type="button"
+                      disabled={togglingStatus}
+                      onClick={() => void handleResetAgentAuto(activeModalAgent)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ml-auto active:scale-95",
+                        currentStatus?.mode === "auto"
+                          ? "border border-primary/40 bg-primary/10 text-primary font-semibold"
+                          : "border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground"
+                      )}
+                      title="Reprendre la planification automatique"
+                    >
+                      <RefreshCw className={cn("h-3 w-3", togglingStatus && "animate-spin")} />
+                      <span>Mode Automatique</span>
+                    </button>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         )}
 

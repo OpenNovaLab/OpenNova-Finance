@@ -97,12 +97,18 @@ Hermes et Muse concentrent leurs analyses sur ces 13 titres réels :
 
 ---
 
-## 5. Indicateur d'État Opérationnel d'Hermes
+## 5. Indicateurs d'État Opérationnel (Hermes × Muse)
 
-L'interface OpenNova-Finance affiche en temps réel l'état d'activité d'Hermes en haut du flux :
+L'interface OpenNova-Finance affiche en temps réel l'état d'activité des deux agents en haut du flux :
 
+### Nova · Hermes (Sentinelle locale · RTX 3080 Ti) :
 - 🟢 **« Au travail »** : Scan actif des dépêches en cours ou inférence Nemotron sur la RTX 3080 Ti locale.
 - 🟡 **« En attente »** : Marchés ouverts (08:00 – 17:30 EDT lun-ven), en veille passive entre les rondes de 15 minutes.
 - 🌙 **« Au repos »** : Clôture des marchés (soirée/nuit ou week-end).
 
-L'état est exposé via l'endpoint public `GET /api/hermes/status` et peut être mis à jour par le pont via `POST/PATCH /api/hermes/status`. Alex peut également basculer manuellement l'état ou réactiver la gestion automatique directement depuis le panneau d'état du dashboard.
+### Nova · Muse (Analyste stratégique · Meta AI Infonuagique) :
+- 🟢 **« Au travail »** : Rédaction en cours d'un point pré-marché (07:45 – 08:35 EDT), d'un bilan de clôture (16:15 – 17:05 EDT) ou d'un flash urgent.
+- 🟡 **« En attente »** : En observation active pendant la séance de bourse (08:35 – 16:15 EDT lun-ven).
+- 🌙 **« Au repos »** : Hors séance (soirée/nuit ou week-end), en attente du prochain point à 08:05 EDT.
+
+Les états sont exposés via l'endpoint public `GET /api/hermes/status` (retournant `{ hermes, muse }`) et peuvent être mis à jour par les ponts via `POST/PATCH /api/hermes/status` avec `agent: 'hermes' | 'muse'`. Alex peut également basculer manuellement l'état de l'un ou l'autre agent ou réactiver la gestion automatique directement depuis le panneau d'état du dashboard.

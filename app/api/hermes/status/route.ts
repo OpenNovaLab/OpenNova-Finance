@@ -2,33 +2,50 @@ import { NextResponse } from "next/server"
 import { isHermesEnabled } from "@/lib/hermes-config"
 import {
   getHermesStatus,
-  updateHermesStatus,
-  resetHermesStatusToAuto,
+  getMuseState,
+  updateAgentStatus,
+  resetAgentStatusToAuto,
   hermesStatusUpdateInputSchema,
-  type HermesStatus,
+  type AgentStatus,
 } from "@/lib/hermes-status-storage"
 
 export const GET = async () => {
   if (!isHermesEnabled()) {
+    const disabledStatus = (agent: "hermes" | "muse"): AgentStatus => ({
+      agent,
+      state: "resting",
+      label: "Au repos",
+      detail: "Disponible sur l'instance locale seulement",
+      hardware: agent === "hermes" ? "RTX 3080 Ti (12GB) · Nemotron 3.5" : "Serveurs Meta AI",
+      model: agent === "hermes" ? "Nemotron 3.5" : "Meta AI · Llama 3.3",
+      mode: "auto",
+      updatedAt: new Date().toISOString(),
+    })
+    const hermes = disabledStatus("hermes")
+    const muse = disabledStatus("muse")
     return NextResponse.json(
       {
         ok: true,
         enabled: false,
-        status: {
-          state: "resting",
-          label: "Au repos",
-          detail: "Disponible sur l'instance locale seulement",
-          hardware: "RTX 3080 Ti (12GB) · Nemotron 3.5",
-          mode: "auto",
-          updatedAt: new Date().toISOString(),
-        } satisfies HermesStatus,
+        status: hermes,
+        hermes,
+        muse,
       },
       { status: 200 }
     )
   }
 
-  const status = await getHermesStatus()
-  return NextResponse.json({ ok: true, enabled: true, status }, { status: 200 })
+  const [hermes, muse] = await Promise.all([getHermesStatus(), getMuseState()])
+  return NextResponse.json(
+    {
+      ok: true,
+      enabled: true,
+      status: hermes,
+      hermes,
+      muse,
+    },
+    { status: 200 }
+  )
 }
 
 export const POST = async (request: Request) => {
@@ -50,11 +67,19 @@ export const POST = async (request: Request) => {
   }
 
   const record = (body && typeof body === "object" ? body : {}) as Record<string, unknown>
+  const targetAgent: "hermes" | "muse" = record.agent === "muse" ? "muse" : "hermes"
 
   // Action spéciale : repasser en mode automatique
   if (record.action === "reset_auto") {
-    const status = await resetHermesStatusToAuto()
-    return NextResponse.json({ ok: true, status }, { status: 200 })
+    if (record.agent === "all") {
+      const [hermes, muse] = await Promise.all([
+        resetAgentStatusToAuto("hermes"),
+        resetAgentStatusToAuto("muse"),
+      ])
+      return NextResponse.json({ ok: true, status: hermes, hermes, muse }, { status: 200 })
+    }
+    const updated = await resetAgentStatusToAuto(targetAgent)
+    return NextResponse.json({ ok: true, status: updated, [targetAgent]: updated }, { status: 200 })
   }
 
   const parsed = hermesStatusUpdateInputSchema.safeParse(record)
@@ -70,8 +95,8 @@ export const POST = async (request: Request) => {
     )
   }
 
-  const status = await updateHermesStatus(parsed.data)
-  return NextResponse.json({ ok: true, status }, { status: 200 })
+  const updated = await updateAgentStatus(targetAgent, parsed.data)
+  return NextResponse.json({ ok: true, status: updated, [targetAgent]: updated }, { status: 200 })
 }
 
 export const PATCH = POST
