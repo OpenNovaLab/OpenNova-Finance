@@ -20,6 +20,7 @@ import List01 from "./list-01"
 import List02 from "./list-02"
 import List03 from "./list-03"
 import List04 from "./list-04"
+import DashboardSection from "./dashboard-section"
 import PortfolioHighlights from "./portfolio-highlights"
 import HermesBriefing from "./hermes-briefing"
 import InsightsPanel from "./insights-panel"
@@ -122,244 +123,128 @@ export default function Content() {
         </TabsList>
 
         <TabsContent value="portfolio" className="space-y-8">
-          <section id="points-saillants" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <Sparkles className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                  Points saillants
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Alertes et priorités calculées localement, à partir de vos données.
-                </p>
-              </div>
-            </div>
+          <DashboardSection
+            id="points-saillants"
+            icon={Sparkles}
+            title="Points saillants"
+            description="Alertes et priorités calculées localement, à partir de vos données."
+          >
             <PortfolioHighlights className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="briefing-hermes" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <Bot className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                  Briefings
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Synthèses quotidiennes — Nova · Hermes (local) et Nova · Muse.
-                </p>
-              </div>
-            </div>
+          <DashboardSection
+            id="briefing-hermes"
+            icon={Bot}
+            title="Briefings"
+            description="Synthèses quotidiennes — Nova · Hermes (local) et Nova · Muse."
+          >
             <HermesBriefing className="w-full" />
-          </section>
+          </DashboardSection>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <section id="accounts" className="space-y-3 scroll-mt-24">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                  <Wallet className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold tracking-tight text-foreground">Comptes</h2>
-                  <p className="text-xs text-muted-foreground">Aperçu rapide des soldes</p>
-                </div>
-              </div>
+            <DashboardSection
+              id="accounts"
+              icon={Wallet}
+              title="Comptes"
+              description="Aperçu rapide des soldes"
+            >
               <List01 className="h-full w-full" />
-            </section>
+            </DashboardSection>
 
-            <section id="transactions" className="space-y-3 scroll-mt-24">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                  <CreditCard className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                    Transactions récentes
-                  </h2>
-                  <p className="text-xs text-muted-foreground">Flux en temps réel des mouvements</p>
-                </div>
-              </div>
+            <DashboardSection
+              id="transactions"
+              icon={CreditCard}
+              title="Transactions récentes"
+              description="Flux en temps réel des mouvements"
+            >
               <List02 className="h-full w-full" />
-            </section>
+            </DashboardSection>
 
-            <section id="performance-allocation" className="space-y-3 scroll-mt-24">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                  <PieChart className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                    Performance & allocation
-                  </h2>
-                  <p className="text-xs text-muted-foreground">Comparaison vs objectifs</p>
-                </div>
-              </div>
+            <DashboardSection
+              id="performance-allocation"
+              icon={PieChart}
+              title="Performance & allocation"
+              description="Comparaison vs objectifs"
+            >
               <PerformanceAllocation className="h-full w-full" />
-            </section>
+            </DashboardSection>
           </div>
 
-          <section id="insights" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <TrendingUp className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Insights & alertes
-              </h2>
-            </div>
+          <DashboardSection id="insights" icon={TrendingUp} title="Insights & alertes">
             <InsightsPanel className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="stock-actions" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <TrendingUp className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Actions de marché
-              </h2>
-            </div>
+          <DashboardSection id="stock-actions" icon={TrendingUp} title="Actions de marché">
             <List04 className="h-full w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="rebalancing" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <RefreshCcw className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Rééquilibrage
-              </h2>
-            </div>
+          <DashboardSection id="rebalancing" icon={RefreshCcw} title="Rééquilibrage">
             <Rebalancing className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="growth-studio" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <Target className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Growth Studio IA
-              </h2>
-            </div>
+          <DashboardSection id="growth-studio" icon={Target} title="Growth Studio IA">
             <PortfolioGrowthStudio className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="trading-desk" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <CandlestickChart className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Trading Desk IA
-              </h2>
-            </div>
+          <DashboardSection id="trading-desk" icon={CandlestickChart} title="Trading Desk IA">
             <AiTradingDesk className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="stock-intelligence" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <TrendingUp className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Stock Intelligence IA
-              </h2>
-            </div>
+          <DashboardSection id="stock-intelligence" icon={TrendingUp} title="Stock Intelligence IA">
             <StockAnalysisPanel className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="stock-alerts" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <ShieldAlert className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Alertes intelligentes actions
-              </h2>
-            </div>
+          <DashboardSection
+            id="stock-alerts"
+            icon={ShieldAlert}
+            title="Alertes intelligentes actions"
+          >
             <StockAlertsWidget className="w-full" maxAlerts={6} />
-          </section>
+          </DashboardSection>
         </TabsContent>
 
         <TabsContent value="budget" className="space-y-8">
-          <section id="budget-cashflow" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <PiggyBank className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Budget & Cashflow
-              </h2>
-            </div>
+          <DashboardSection id="budget-cashflow" icon={PiggyBank} title="Budget & Cashflow">
             <BudgetCashflow className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="monthly-budget" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <PiggyBank className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Budget mensuel par catégorie
-              </h2>
-            </div>
+          <DashboardSection
+            id="monthly-budget"
+            icon={PiggyBank}
+            title="Budget mensuel par catégorie"
+          >
             <MonthlyBudgetPlanner className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="planning-scenarios" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <ClipboardList className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Scénarios de planification
-              </h2>
-            </div>
+          <DashboardSection
+            id="planning-scenarios"
+            icon={ClipboardList}
+            title="Scénarios de planification"
+          >
             <PlanningScenarios className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="smart-tools" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <ClipboardList className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Alertes intelligentes & simulateur
-              </h2>
-            </div>
+          <DashboardSection
+            id="smart-tools"
+            icon={ClipboardList}
+            title="Alertes intelligentes & simulateur"
+          >
             <SmartFinanceTools className="w-full" />
-          </section>
+          </DashboardSection>
 
-          <section id="goals" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <Target className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Objectifs financiers
-              </h2>
-            </div>
+          <DashboardSection id="goals" icon={Target} title="Objectifs financiers">
             <List03 />
-          </section>
+          </DashboardSection>
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-8">
-          <section id="integrations" className="space-y-3 scroll-mt-24">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl border border-border/60 bg-primary/10">
-                <Plug className="w-4 h-4 text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                Intégrations & synchronisation
-              </h2>
-            </div>
+          <DashboardSection
+            id="integrations"
+            icon={Plug}
+            title="Intégrations & synchronisation"
+          >
             <Integrations />
-          </section>
+          </DashboardSection>
         </TabsContent>
       </Tabs>
     </PortfolioProvider>
