@@ -159,6 +159,37 @@ def post_briefing(base_url: str, raw: bytes, bridge_key: str):
         return False, "délai dépassé (60 s)"
 
 
+def update_muse_status(base_url: str, bridge_key: str, state: str, detail: str) -> None:
+    """Met à jour le statut opérationnel de Muse sur OpenNova-Finance."""
+    url = f"{base_url}/api/hermes/status"
+    now_iso = datetime.now().astimezone().isoformat(timespec="seconds")
+    payload = {
+        "agent": "muse",
+        "state": state,
+        "detail": detail,
+        "lastRun": now_iso,
+        "hardware": "Serveurs Infonuagiques Meta AI",
+        "model": "Meta AI · Llama 3.3",
+        "mode": "auto",
+    }
+    try:
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "Accept": "application/json",
+                "x-bridge-key": bridge_key,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5):
+            pass
+    except Exception:
+        pass
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Ramassage des briefings Nova · Muse (branche nova-outbox) "
@@ -258,6 +289,7 @@ def main() -> int:
             empreintes[path] = digest
             save_state(state_path, empreintes)
             print(f"  ✓ {label} : publié ({detail}).")
+            update_muse_status(base_url, bridge_key, "idle", f"Dernière publication : {payload.get('titre', path)[:60]}")
         else:
             failures += 1
             print(f"  ✗ {label} : échec de publication ({detail}).", file=sys.stderr)
