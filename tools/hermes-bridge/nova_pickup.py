@@ -243,6 +243,10 @@ def main() -> int:
             print(f"  ✗ {path} : {problem}.", file=sys.stderr)
             failures += 1
             continue
+        # Attribution automatique d'un identifiant unique basé sur le nom du fichier si absent
+        if "id" not in payload:
+            payload["id"] = f"nova-{Path(path).stem}"
+            raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         label = f"{path} (briefing du {payload['date']})"
         if args.dry_run:
             print(f"  → {label} : valide, serait publié sur {base_url}.")
