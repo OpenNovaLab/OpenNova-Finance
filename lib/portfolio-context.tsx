@@ -22,6 +22,7 @@ import {
   dollarsToCents,
   formatCurrencyFromCents,
   parseCurrencyToCents,
+  calculateStockActionsValueCents,
   type AllocationActual,
   type AllocationTarget,
   type NetWorthBreakdownItem,
@@ -398,6 +399,54 @@ const isLegacyDemoStockActions = (actions: unknown): boolean => {
   return symbols === "AAPL,MSFT,TSLA"
 }
 
+export const isLegacyDemoAccounts = (accounts: AccountItem[]): boolean => {
+  if (!Array.isArray(accounts)) return false
+  const hasDemoAccounts = accounts.some(
+    (a) =>
+      a.title === "Main Savings" ||
+      (a.title === "Checking Account" && a.balanceCents === 285_000) ||
+      (a.title === "Investment Portfolio" && a.balanceCents === 1_523_080 && accounts.length === 5) ||
+      (a.title === "Savings Account" && a.balanceCents === 300_000) ||
+      (a.id === "1" && a.balanceCents === 845_945)
+  )
+  if (hasDemoAccounts) return true
+
+  if (accounts.length === 5 && !accounts.some((a) => a.id.startsWith("disnat-"))) {
+    const ids = accounts.map((a) => a.id).sort().join(",")
+    if (ids === "1,2,3,4,5") return true
+  }
+
+  return false
+}
+
+export const syncAccountsWithStockActions = (
+  accounts: AccountItem[],
+  stockActions: StockAction[]
+): AccountItem[] => {
+  const baseAccounts = isLegacyDemoAccounts(accounts) ? DEFAULT_ACCOUNTS : accounts
+  const stockValueCents = calculateStockActionsValueCents(stockActions)
+
+  const targetIndex = baseAccounts.findIndex(
+    (acc) => acc.id === "3" || acc.title === "Investment Portfolio"
+  )
+
+  if (targetIndex === -1) {
+    return baseAccounts
+  }
+
+  const targetAccount = baseAccounts[targetIndex]
+  if (targetAccount.balanceCents === stockValueCents && baseAccounts === accounts) {
+    return accounts
+  }
+
+  const nextAccounts = [...baseAccounts]
+  nextAccounts[targetIndex] = {
+    ...targetAccount,
+    balanceCents: stockValueCents,
+  }
+  return nextAccounts
+}
+
 const migrateToV2 = (input: {
   accounts: unknown
   transactions: unknown
@@ -405,14 +454,19 @@ const migrateToV2 = (input: {
   stockActions: unknown
   lastSaved: unknown
 }): PortfolioStateV2 => {
+  const stockActions = isLegacyDemoStockActions(input.stockActions)
+    ? DEFAULT_STOCK_ACTIONS
+    : normalizeStockActions(input.stockActions) ?? DEFAULT_STOCK_ACTIONS
+  const rawAccounts = normalizeAccounts(input.accounts) ?? DEFAULT_ACCOUNTS
+  const accountsToUse = isLegacyDemoAccounts(rawAccounts) ? DEFAULT_ACCOUNTS : rawAccounts
+  const accounts = syncAccountsWithStockActions(accountsToUse, stockActions)
+
   return {
     version: 2,
-    accounts: normalizeAccounts(input.accounts) ?? DEFAULT_ACCOUNTS,
+    accounts,
     transactions: normalizeTransactions(input.transactions) ?? DEFAULT_TRANSACTIONS,
     goals: normalizeGoals(input.goals) ?? DEFAULT_GOALS,
-    stockActions: isLegacyDemoStockActions(input.stockActions)
-      ? DEFAULT_STOCK_ACTIONS
-      : normalizeStockActions(input.stockActions) ?? DEFAULT_STOCK_ACTIONS,
+    stockActions,
     lastSaved: normalizeLastSaved(input.lastSaved),
   }
 }
@@ -423,6 +477,13 @@ const loadPortfolioState = (): PortfolioStateV2 | null => {
     if (isLegacyDemoStockActions(stored.value.stockActions)) {
       stored.value.stockActions = DEFAULT_STOCK_ACTIONS
     }
+    if (isLegacyDemoAccounts(stored.value.accounts)) {
+      stored.value.accounts = DEFAULT_ACCOUNTS
+    }
+    stored.value.accounts = syncAccountsWithStockActions(
+      stored.value.accounts,
+      stored.value.stockActions
+    )
     return stored.value
   }
 
@@ -431,6 +492,13 @@ const loadPortfolioState = (): PortfolioStateV2 | null => {
     if (isLegacyDemoStockActions(backup.value.stockActions)) {
       backup.value.stockActions = DEFAULT_STOCK_ACTIONS
     }
+    if (isLegacyDemoAccounts(backup.value.accounts)) {
+      backup.value.accounts = DEFAULT_ACCOUNTS
+    }
+    backup.value.accounts = syncAccountsWithStockActions(
+      backup.value.accounts,
+      backup.value.stockActions
+    )
     return backup.value
   }
 
@@ -512,7 +580,9 @@ interface PortfolioContextType {
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined)
 
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
-  const [accounts, setAccounts] = useState<AccountItem[]>(DEFAULT_ACCOUNTS)
+  const [accounts, setAccounts] = useState<AccountItem[]>(() =>
+    syncAccountsWithStockActions(DEFAULT_ACCOUNTS, DEFAULT_STOCK_ACTIONS)
+  )
   const [transactions, setTransactions] = useState<Transaction[]>(DEFAULT_TRANSACTIONS)
   const [goals, setGoals] = useState<FinancialGoal[]>(DEFAULT_GOALS)
   const [stockActions, setStockActions] = useState<StockAction[]>(DEFAULT_STOCK_ACTIONS)
@@ -526,7 +596,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const stored = loadPortfolioState()
     if (stored) {
-      setAccounts(stored.accounts ?? DEFAULT_ACCOUNTS)
+      const validAccounts = isLegacyDemoAccounts(stored.accounts ?? [])
+        ? DEFAULT_ACCOUNTS
+        : stored.accounts ?? DEFAULT_ACCOUNTS
+      setAccounts(
+        syncAccountsWithStockActions(
+          validAccounts,
+          stored.stockActions ?? DEFAULT_STOCK_ACTIONS
+        )
+      )
       setTransactions(stored.transactions ?? DEFAULT_TRANSACTIONS)
       setGoals(stored.goals ?? DEFAULT_GOALS)
       setStockActions(stored.stockActions ?? DEFAULT_STOCK_ACTIONS)
@@ -534,9 +612,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
       setIsHydrated(true)
       return
     }
+    setAccounts(syncAccountsWithStockActions(DEFAULT_ACCOUNTS, DEFAULT_STOCK_ACTIONS))
     setLastSaved(canUseStorage() ? window.localStorage.getItem(STORAGE_KEYS.LAST_SAVED) : null)
     setIsHydrated(true)
   }, [])
+
+  useEffect(() => {
+    if (!isHydrated) return
+    setAccounts((prevAccounts) => syncAccountsWithStockActions(prevAccounts, stockActions))
+  }, [isHydrated, stockActions])
 
   useEffect(() => {
     if (!isHydrated) return
@@ -606,7 +690,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         const localSavedAt = new Date(localState.lastSaved).getTime()
 
         if (Number.isFinite(remoteSavedAt) && remoteSavedAt > localSavedAt) {
-          setAccounts(remoteState.accounts)
+          setAccounts(syncAccountsWithStockActions(remoteState.accounts, remoteState.stockActions))
           setTransactions(remoteState.transactions)
           setGoals(remoteState.goals)
           setStockActions(remoteState.stockActions)

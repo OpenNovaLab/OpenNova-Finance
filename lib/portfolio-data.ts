@@ -251,134 +251,6 @@ export const formatRelativeTimestampFromIso = (valueIso: string) => {
   return SHORT_DATE_TIME_FORMATTER.format(parsed)
 }
 
-export const ACCOUNTS: AccountItem[] = [
-  {
-    id: "1",
-    title: "Main Savings",
-    description: "Personal savings",
-    balanceCents: 845_945,
-    type: "savings",
-  },
-  {
-    id: "2",
-    title: "Checking Account",
-    description: "Daily expenses",
-    balanceCents: 285_000,
-    type: "checking",
-  },
-  {
-    id: "3",
-    title: "Investment Portfolio",
-    description: "Stock & ETFs",
-    balanceCents: 1_523_080,
-    type: "investment",
-  },
-  {
-    id: "4",
-    title: "Credit Card",
-    description: "Pending charges",
-    balanceCents: 120_000,
-    type: "debt",
-  },
-  {
-    id: "5",
-    title: "Savings Account",
-    description: "Emergency fund",
-    balanceCents: 300_000,
-    type: "savings",
-  },
-]
-
-export const TRANSACTIONS: Transaction[] = [
-  {
-    id: "1",
-    title: "Dividend Payment - AAPL",
-    amountCents: 12_550,
-    type: "incoming",
-    category: "investment",
-    timestampIso: "2026-03-03T14:45:00.000Z",
-    status: "completed",
-  },
-  {
-    id: "2",
-    title: "Salary Deposit",
-    amountCents: 450_000,
-    type: "incoming",
-    category: "income",
-    timestampIso: "2026-03-03T09:00:00.000Z",
-    status: "completed",
-  },
-  {
-    id: "3",
-    title: "Stock Purchase - NVDA",
-    amountCents: 85_000,
-    type: "outgoing",
-    category: "investment",
-    timestampIso: "2026-03-02T15:30:00.000Z",
-    status: "completed",
-  },
-  {
-    id: "4",
-    title: "Amazon Purchase",
-    amountCents: 15_699,
-    type: "outgoing",
-    category: "shopping",
-    timestampIso: "2026-03-02T11:20:00.000Z",
-    status: "completed",
-  },
-  {
-    id: "5",
-    title: "Electric Bill",
-    amountCents: 14_250,
-    type: "outgoing",
-    category: "utilities",
-    timestampIso: "2026-02-02T08:00:00.000Z",
-    status: "completed",
-  },
-  {
-    id: "6",
-    title: "Credit Card Payment",
-    amountCents: 50_000,
-    type: "outgoing",
-    category: "debt",
-    timestampIso: "2026-02-01T08:00:00.000Z",
-    status: "completed",
-  },
-]
-
-export const FINANCIAL_GOALS: FinancialGoal[] = [
-  {
-    id: "1",
-    title: "Emergency Fund",
-    subtitle: "3 months of expenses saved",
-    iconStyle: "savings",
-    targetDateIso: "2026-12-01T00:00:00.000Z",
-    targetAmountCents: 1_500_000,
-    status: "in-progress",
-    progress: 65,
-  },
-  {
-    id: "2",
-    title: "Stock Portfolio",
-    subtitle: "Tech sector investment plan",
-    iconStyle: "investment",
-    targetDateIso: "2026-06-01T00:00:00.000Z",
-    targetAmountCents: 5_000_000,
-    status: "pending",
-    progress: 30,
-  },
-  {
-    id: "3",
-    title: "Debt Repayment",
-    subtitle: "Credit card payoff plan",
-    iconStyle: "debt",
-    targetDateIso: "2027-03-01T00:00:00.000Z",
-    targetAmountCents: 2_500_000,
-    status: "in-progress",
-    progress: 45,
-  },
-]
-
 // Positions réelles d'Alex (source : classeur « Investissement Principale », onglet Dashboard,
 // relevé du 2026-10-25). Le classeur suit des positions, pas un historique de transactions :
 // chaque position est donc inscrite comme un achat exécuté au prix moyen payé, daté du relevé.
@@ -501,6 +373,166 @@ export const STOCK_ACTIONS: StockAction[] = [
     priceCents: 1090,
     tradeDateIso: "2026-10-25T00:00:00.000Z",
     status: "executed",
+  },
+]
+
+export const calculateStockActionsValueCents = (actions: StockAction[]): number => {
+  return actions
+    .filter((action) => action.status === "executed")
+    .reduce((sum, action) => {
+      const tradeValue = Math.round(action.shares * action.priceCents)
+      return action.action === "buy" ? sum + tradeValue : sum - tradeValue
+    }, 0)
+}
+
+export const TOTAL_STOCK_ACTIONS_VALUE_CENTS = calculateStockActionsValueCents(STOCK_ACTIONS)
+
+export const DISNAT_CRI_CENTS = 7_530_052 // 75 300,52 $ CAD (titres 75 257,70 $, encaisse 42,82 $)
+export const DISNAT_CELI_CAD_CENTS = 2_002_281 // 20 022,81 $ CAD (titres 19 989,71 $, encaisse 33,10 $)
+export const DISNAT_CELI_USD_CENTS = 1_565_765 // 15 657,65 $ USD (titres 15 597,62 $, encaisse 60,03 $)
+export const DISNAT_OTHER_CENTS = 2_628 // 26,28 $ (CAD: 5K717A3 8,49 $, 5K717Y8 6,00 $ | USD: 5K717B1 5,79 $, 5K717U7 6,00 $)
+export const TOTAL_DISNAT_VALUE_CENTS =
+  DISNAT_CRI_CENTS + DISNAT_CELI_CAD_CENTS + DISNAT_CELI_USD_CENTS + DISNAT_OTHER_CENTS
+
+export const ACCOUNTS: AccountItem[] = [
+  {
+    id: "1",
+    title: "Épargne Desjardins",
+    description: "Taxes, Léa, REER & Épargne (AccèsD)",
+    balanceCents: 47_904,
+    type: "savings",
+  },
+  {
+    id: "2",
+    title: "Comptes Chèques Desjardins",
+    description: "Personnel (Joliette) & Conjoint (AccèsD)",
+    balanceCents: 87_961,
+    type: "checking",
+  },
+  {
+    id: "disnat-cri",
+    title: "CRI Disnat (5K71713)",
+    description: "Titres : 75 257,70 $, Encaisse : 42,82 $ (CAD)",
+    balanceCents: DISNAT_CRI_CENTS,
+    type: "investment",
+  },
+  {
+    id: "disnat-celi-cad",
+    title: "CELI Disnat CAD (5K717Z6)",
+    description: "Titres : 19 989,71 $, Encaisse : 33,10 $ (CAD)",
+    balanceCents: DISNAT_CELI_CAD_CENTS,
+    type: "investment",
+  },
+  {
+    id: "disnat-celi-usd",
+    title: "CELI Disnat USD (5K717T9)",
+    description: "Titres : 15 597,62 $, Encaisse : 60,03 $ (USD)",
+    balanceCents: DISNAT_CELI_USD_CENTS,
+    type: "investment",
+  },
+  {
+    id: "disnat-comptant-reer",
+    title: "Disnat Comptant & REER",
+    description: "5K717A3 (8,49 $), 5K717Y8 (6,00 $), 5K717B1 (5,79 $ US), 5K717U7 (6,00 $ US)",
+    balanceCents: DISNAT_OTHER_CENTS,
+    type: "investment",
+  },
+  {
+    id: "4",
+    title: "Mastercard Odyssée & Visa",
+    description: "Cartes de crédit Desjardins (AccèsD)",
+    balanceCents: 259_676,
+    type: "debt",
+  },
+]
+
+export const TRANSACTIONS: Transaction[] = [
+  {
+    id: "1",
+    title: "Dividend Payment - AAPL",
+    amountCents: 12_550,
+    type: "incoming",
+    category: "investment",
+    timestampIso: "2026-03-03T14:45:00.000Z",
+    status: "completed",
+  },
+  {
+    id: "2",
+    title: "Salary Deposit",
+    amountCents: 450_000,
+    type: "incoming",
+    category: "income",
+    timestampIso: "2026-03-03T09:00:00.000Z",
+    status: "completed",
+  },
+  {
+    id: "3",
+    title: "Stock Purchase - NVDA",
+    amountCents: 85_000,
+    type: "outgoing",
+    category: "investment",
+    timestampIso: "2026-03-02T15:30:00.000Z",
+    status: "completed",
+  },
+  {
+    id: "4",
+    title: "Amazon Purchase",
+    amountCents: 15_699,
+    type: "outgoing",
+    category: "shopping",
+    timestampIso: "2026-03-02T11:20:00.000Z",
+    status: "completed",
+  },
+  {
+    id: "5",
+    title: "Electric Bill",
+    amountCents: 14_250,
+    type: "outgoing",
+    category: "utilities",
+    timestampIso: "2026-02-02T08:00:00.000Z",
+    status: "completed",
+  },
+  {
+    id: "6",
+    title: "Credit Card Payment",
+    amountCents: 50_000,
+    type: "outgoing",
+    category: "debt",
+    timestampIso: "2026-02-01T08:00:00.000Z",
+    status: "completed",
+  },
+]
+
+export const FINANCIAL_GOALS: FinancialGoal[] = [
+  {
+    id: "1",
+    title: "Emergency Fund",
+    subtitle: "3 months of expenses saved",
+    iconStyle: "savings",
+    targetDateIso: "2026-12-01T00:00:00.000Z",
+    targetAmountCents: 1_500_000,
+    status: "in-progress",
+    progress: 65,
+  },
+  {
+    id: "2",
+    title: "Stock Portfolio",
+    subtitle: "Tech sector investment plan",
+    iconStyle: "investment",
+    targetDateIso: "2026-06-01T00:00:00.000Z",
+    targetAmountCents: 5_000_000,
+    status: "pending",
+    progress: 30,
+  },
+  {
+    id: "3",
+    title: "Debt Repayment",
+    subtitle: "Credit card payoff plan",
+    iconStyle: "debt",
+    targetDateIso: "2027-03-01T00:00:00.000Z",
+    targetAmountCents: 2_500_000,
+    status: "in-progress",
+    progress: 45,
   },
 ]
 

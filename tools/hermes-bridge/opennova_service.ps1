@@ -14,6 +14,7 @@ $PidFile = Join-Path $RuntimeDir "server.pid"
 $SentinelStatusFile = Join-Path $BridgeDir ".sentinel_status.json"
 $PickupStatusFile = Join-Path $BridgeDir ".nova_pickup_status.json"
 $Port = 3000
+$HermesLauncher = "C:\Users\petit\Documents\antigravity\splendid-euclid\start-hermes-stack.ps1"
 
 if (-not (Test-Path $RuntimeDir)) { New-Item -ItemType Directory -Path $RuntimeDir -Force | Out-Null }
 if (-not (Test-Path $LogsDir)) { New-Item -ItemType Directory -Path $LogsDir -Force | Out-Null }
@@ -49,10 +50,18 @@ function Start-OpenNovaServer {
 
     Write-Host "  [+] Demarrage du serveur Next.js OpenNova-Finance (port $Port)..." -ForegroundColor Cyan
 
+    $daemonVbs = Join-Path $BridgeDir "run_server_daemon.vbs"
     $task = Get-ScheduledTask -TaskName "OpenNova_Server" -ErrorAction SilentlyContinue
     if (-not $task) {
-        $daemonCmd = Join-Path $BridgeDir "run_server_daemon.cmd"
-        & schtasks /create /tn "OpenNova_Server" /tr "`"$daemonCmd`"" /sc ONCE /st 00:00 /f >$null 2>&1
+        $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$daemonVbs`""
+        Register-ScheduledTask -TaskName "OpenNova_Server" -Action $action -Force >$null 2>&1
+    } else {
+        # S'assure que la tache utilise le lanceur invisible wscript pour eviter toute fenetre CMD
+        $currentAction = $task.Actions | Select-Object -First 1
+        if ($currentAction.Execute -ne "wscript.exe") {
+            $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$daemonVbs`""
+            Set-ScheduledTask -TaskName "OpenNova_Server" -Action $action >$null 2>&1
+        }
     }
 
     & schtasks /run /tn "OpenNova_Server" >$null 2>&1
@@ -81,6 +90,28 @@ function Start-OpenNovaServer {
         } else {
             Write-Host "  [!] Serveur en cours d'initialisation..." -ForegroundColor Yellow
         }
+    }
+}
+
+function Start-HermesAgentStack {
+    Write-Host "  [+] Verification de la stack Hermes Agent (Nova / WSL2 / Nemotron)..." -ForegroundColor Cyan
+
+    $hermesOnline = $false
+    try {
+        $check = Invoke-WebRequest -Uri "http://127.0.0.1:18790/" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+        if ($check.StatusCode -eq 200) { $hermesOnline = $true }
+    } catch {}
+
+    if ($hermesOnline) {
+        Write-Host "  [i] Hermes Agent (Nova) est deja en ligne (Dashboard http://127.0.0.1:18790/ & Gateway 8642)." -ForegroundColor Green
+        return
+    }
+
+    if (Test-Path $HermesLauncher) {
+        Write-Host "  [+] Demarrage de la stack Hermes via start-hermes-stack.ps1..." -ForegroundColor Cyan
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$HermesLauncher"
+    } else {
+        Write-Host "  [!] Fichier start-hermes-stack.ps1 introuvable a l'emplacement $HermesLauncher" -ForegroundColor Yellow
     }
 }
 
@@ -134,6 +165,16 @@ function Stop-OpenNovaServer {
                 Write-Host "  [+] Script Python sentinelle arrete (PID $($pp.ProcessId))" -ForegroundColor Green
             } catch {}
         }
+    }
+}
+
+function Stop-HermesAgentStack {
+    Write-Host "  [-] Liberation des ressources GPU RTX 3080 Ti pour Hermes..." -ForegroundColor Cyan
+    try {
+        & wsl.exe -d Ubuntu -- bash -c "systemctl is-active --quiet ollama && ollama stop nemotron-3.5-bolt:e4b 2>/dev/null || true"
+        Write-Host "  [+] Modeles IA decharges de la VRAM (RTX 3080 Ti liberee pour les jeux)." -ForegroundColor Green
+    } catch {
+        # Silencieux
     }
 }
 
@@ -214,10 +255,11 @@ switch ($Action) {
         Write-Host "  DEMARRAGE DE LA STACK OPENNOVA-FINANCE & AGENTS HERMES / MUSE" -ForegroundColor Cyan
         Write-Host "====================================================================" -ForegroundColor Cyan
         Set-ScheduledTasksState -State "enable"
+        Start-HermesAgentStack
         Start-OpenNovaServer
         Run-AgentRounds
         Write-Host ""
-        Write-Host "  [+] OpenNova-Finance est operationnel." -ForegroundColor Green
+        Write-Host "  [+] OpenNova-Finance et Hermes sont operationnels." -ForegroundColor Green
         Write-Host "  [+] Tableau de bord : http://localhost:$Port/dashboard#briefing-hermes" -ForegroundColor Green
         Write-Host "====================================================================" -ForegroundColor Cyan
     }
@@ -228,6 +270,7 @@ switch ($Action) {
         Write-Host "====================================================================" -ForegroundColor Yellow
         Set-ScheduledTasksState -State "disable"
         Stop-OpenNovaServer
+        Stop-HermesAgentStack
         Update-AgentStatusOnStop
         Write-Host ""
         Write-Host "  VOTRE ORDINATEUR EST ENTIEREMENT LIBERE :" -ForegroundColor Green
@@ -253,6 +296,7 @@ switch ($Action) {
         Start-Sleep -Seconds 5
 
         Set-ScheduledTasksState -State "enable"
+        Start-HermesAgentStack
         Start-OpenNovaServer
 
         $pickupScript = Join-Path $BridgeDir "nova_pickup.py"
@@ -271,13 +315,21 @@ switch ($Action) {
         Write-Host "--- ETAT D'OPENNOVA-FINANCE & AGENTS ---" -ForegroundColor Cyan
         $listening = Test-ServerListening
         $srvColor = if ($listening) { "Green" } else { "Red" }
-        Write-Host "Serveur Web (port $Port) : $(if ($listening) {'EN LIGNE'} else {'ARRETE'})" -ForegroundColor $srvColor
+        Write-Host "Serveur Web OpenNova (port $Port) : $(if ($listening) {'EN LIGNE'} else {'ARRETE'})" -ForegroundColor $srvColor
+
+        $hermesOnline = $false
+        try {
+            $check = Invoke-WebRequest -Uri "http://127.0.0.1:18790/" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+            if ($check.StatusCode -eq 200) { $hermesOnline = $true }
+        } catch {}
+        $hColor = if ($hermesOnline) { "Green" } else { "Red" }
+        Write-Host "Hermes Agent Dashboard (port 18790) : $(if ($hermesOnline) {'EN LIGNE'} else {'ARRETE'})" -ForegroundColor $hColor
 
         $tasks = @("OpenNova_Hermes_Sentinel", "OpenNova_Nova_Pickup", "OpenNova_Hermes_Briefing", "OpenNova_Server", "OpenNova_Boot_Daemon")
         foreach ($tn in $tasks) {
             $t = Get-ScheduledTask -TaskName $tn -ErrorAction SilentlyContinue
             if ($t) {
-                $stColor = if ($t.State -eq "Ready") { "Green" } else { "Yellow" }
+                $stColor = if ($t.State -eq "Ready" -or $t.State -eq "Running") { "Green" } else { "Yellow" }
                 Write-Host "Tache '$tn' : $($t.State)" -ForegroundColor $stColor
             }
         }
