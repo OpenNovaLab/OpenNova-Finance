@@ -217,6 +217,31 @@ aucun port entrant, aucune donnée du portefeuille ne sort du PC.
 | « Ollama injoignable » | Ollama n'est pas démarré sur le PC |
 | « instantané vide » | Synchronisation non activée dans l'app : activer la synchro ou utiliser `--snapshot-file` |
 
+## Sentinelle Boursière Continue (`hermes_market_sentinel.py`)
+
+L'agent Sentinelle Hermes assure une veille boursière continue sur les 13 positions d'Alex :
+`AVGO`, `ISRG`, `VRT`, `BOTZ`, `URNM`, `HURA`, `VEQT`, `VT`, `PAVE`, `MTRX`, `KOID`, `TDAC`.
+
+Il transforme la section « Briefings » en un **flux social boursier interactif** (style Facebook / Threads) :
+- Scrutateur d'actualités financières temps-réel (Google News & Yahoo Finance).
+- Synthèse d'impact financier (catégorie, sentiment haussier/baissier/neutre, points clés).
+- Publication de chaque actualité sous forme de post indépendant sur `POST /api/hermes/briefings`.
+- Réactions interactives (🚀 Haussier, 📉 Baissier, 🧠 Pertinent) et prise de notes / commentaires de trading directement sous chaque carte.
+
+Commandes de la sentinelle :
+```powershell
+# Injection des analyses initiales riches (seed)
+python tools\hermes-bridge\hermes_market_sentinel.py --seed
+
+# Ronde de surveillance unique
+python tools\hermes-bridge\hermes_market_sentinel.py --once
+
+# Veille permanente en arrière-plan (toutes les 15 minutes)
+python tools\hermes-bridge\hermes_market_sentinel.py --daemon --interval 900
+```
+
+Une tâche planifiée Windows `OpenNova_Hermes_Sentinel` est enregistrée pour exécuter la ronde toutes les 15 minutes en arrière-plan.
+
 ## Sécurité
 
 - Aucun port entrant : le pont initie toutes les connexions.
