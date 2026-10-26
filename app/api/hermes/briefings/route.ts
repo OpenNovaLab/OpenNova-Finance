@@ -5,27 +5,23 @@ import {
   readServiceKey,
 } from "@/lib/hermes-auth"
 import {
+  addHermesBriefingComment,
   listHermesBriefings,
+  toggleHermesBriefingReaction,
   upsertHermesBriefing,
 } from "@/lib/hermes-briefings-storage"
 import { isHermesEnabled } from "@/lib/hermes-config"
 import { hermesBriefingInputSchema } from "@/lib/hermes-types"
 
 /**
- * Briefings Hermes (phase 1 de l'intégration Hermes × OpenNova-Finance).
+ * Briefings & Feed Boursier Hermes (intégration Hermes × OpenNova-Finance).
  *
- * POST — ingestion des briefings, par deux sources possibles : le pont
- * local (source « hermes », clé HERMES_BRIDGE_KEY) et l'assistante
- * infonuagique Nova (source « nova », clé NOVA_BRIDGE_KEY). La source
- * déclarée dans le payload doit correspondre à la clé utilisée, sinon
- * 403. Le middleware exempte ce POST précis de la session navigateur :
- * la clé de service fait foi ici.
- *
- * GET — lecture pour l'interface (dernier briefing + historique récent).
- * Protégé par la session d'accès, comme les autres routes de l'UI.
+ * POST — ingestion des briefings/posts par Hermes local et Nova infonuagique.
+ * GET — lecture du flux boursier complet pour l'interface.
+ * PATCH — réactions interactives (bullish, bearish, insightful) et commentaires.
  */
 
-const HISTORY_RESPONSE_LIMIT = 10
+const HISTORY_RESPONSE_LIMIT = 50
 
 const disabled = () =>
   NextResponse.json(
@@ -130,5 +126,82 @@ export const GET = async () => {
       history: briefings,
     },
     { status: 200 }
+  )
+}
+
+export const PATCH = async (request: Request) => {
+  if (!isHermesEnabled()) {
+    return disabled()
+  }
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "invalid_json", message: "Corps JSON invalide." },
+      { status: 400 }
+    )
+  }
+
+  const payload = body as {
+    id?: unknown
+    action?: unknown
+    reaction?: unknown
+    comment?: unknown
+  }
+
+  if (typeof payload.id !== "string" || !payload.id) {
+    return NextResponse.json(
+      { ok: false, error: "missing_id", message: "Identifiant du post requis." },
+      { status: 400 }
+    )
+  }
+
+  if (
+    payload.action === "react" &&
+    (payload.reaction === "bullish" ||
+      payload.reaction === "bearish" ||
+      payload.reaction === "insightful")
+  ) {
+    const updated = await toggleHermesBriefingReaction(payload.id, payload.reaction)
+    if (!updated) {
+      return NextResponse.json(
+        { ok: false, error: "not_found", message: "Post introuvable." },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json({ ok: true, briefing: updated })
+  }
+
+  if (
+    payload.action === "comment" &&
+    payload.comment &&
+    typeof payload.comment === "object" &&
+    "text" in payload.comment &&
+    typeof (payload.comment as { text: unknown }).text === "string"
+  ) {
+    const commentObj = payload.comment as { author?: unknown; text: string }
+    const author = typeof commentObj.author === "string" && commentObj.author.trim() ? commentObj.author.trim() : "Alex"
+    const text = commentObj.text.trim()
+    if (!text) {
+      return NextResponse.json(
+        { ok: false, error: "empty_comment", message: "Le commentaire ne peut être vide." },
+        { status: 400 }
+      )
+    }
+    const updated = await addHermesBriefingComment(payload.id, { author, text })
+    if (!updated) {
+      return NextResponse.json(
+        { ok: false, error: "not_found", message: "Post introuvable." },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json({ ok: true, briefing: updated })
+  }
+
+  return NextResponse.json(
+    { ok: false, error: "invalid_action", message: "Action non reconnue." },
+    { status: 400 }
   )
 }

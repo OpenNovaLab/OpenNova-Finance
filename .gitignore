@@ -31,3 +31,5 @@ next-env.d.ts
 /data/
 /.tmp/
 .nova-pickup-state.json
+tools/hermes-bridge/.nova-pickup-state.json
+tools/hermes-bridge/.sentinel_seen_news.json

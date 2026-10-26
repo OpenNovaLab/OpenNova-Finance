@@ -3,14 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   upsertHermesBriefing: vi.fn(),
   listHermesBriefings: vi.fn(),
+  toggleHermesBriefingReaction: vi.fn(),
+  addHermesBriefingComment: vi.fn(),
 }))
 
 vi.mock("@/lib/hermes-briefings-storage", () => ({
   upsertHermesBriefing: mocks.upsertHermesBriefing,
   listHermesBriefings: mocks.listHermesBriefings,
+  toggleHermesBriefingReaction: mocks.toggleHermesBriefingReaction,
+  addHermesBriefingComment: mocks.addHermesBriefingComment,
 }))
 
-import { GET, POST } from "@/app/api/hermes/briefings/route"
+import { GET, POST, PATCH } from "@/app/api/hermes/briefings/route"
 
 const TEST_KEY = "hermes-test-key-0123456789abcdef"
 const TEST_NOVA_KEY = "nova-test-key-0123456789abcdef00"
@@ -201,5 +205,60 @@ describe("/api/hermes/briefings", () => {
     const payload = (await response.json()) as { latest: unknown; history: unknown[] }
     expect(payload.latest).toBeNull()
     expect(payload.history).toEqual([])
+  })
+
+  it("PATCH permet d'ajouter une réaction (bullish)", async () => {
+    mocks.toggleHermesBriefingReaction.mockResolvedValueOnce({
+      ...storedBriefing,
+      metadonnees: { ...storedBriefing.metadonnees, reactions: { bullish: 1 } },
+    })
+
+    const response = await PATCH(
+      new Request("http://localhost/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "hermes-2026-10-25",
+          action: "react",
+          reaction: "bullish",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { ok: boolean; briefing: { metadonnees?: { reactions?: Record<string, number> } } }
+    expect(payload.ok).toBe(true)
+    expect(payload.briefing.metadonnees?.reactions?.bullish).toBe(1)
+    expect(mocks.toggleHermesBriefingReaction).toHaveBeenCalledWith("hermes-2026-10-25", "bullish")
+  })
+
+  it("PATCH permet d'ajouter un commentaire", async () => {
+    mocks.addHermesBriefingComment.mockResolvedValueOnce({
+      ...storedBriefing,
+      metadonnees: {
+        ...storedBriefing.metadonnees,
+        comments: [{ id: "c-1", author: "Alex", text: "Position forte", date: "2026-10-25T14:00:00Z" }],
+      },
+    })
+
+    const response = await PATCH(
+      new Request("http://localhost/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "hermes-2026-10-25",
+          action: "comment",
+          comment: { author: "Alex", text: "Position forte" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { ok: boolean }
+    expect(payload.ok).toBe(true)
+    expect(mocks.addHermesBriefingComment).toHaveBeenCalledWith("hermes-2026-10-25", {
+      author: "Alex",
+      text: "Position forte",
+    })
   })
 })

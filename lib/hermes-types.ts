@@ -41,11 +41,27 @@ export const hermesBriefingMetadataSchema = z
     modele: z.string().min(1).max(80).optional(),
     genereLe: z.string().datetime({ offset: true }).optional(),
     symboles: z.array(z.string().min(1).max(24)).max(100).optional(),
+    category: z.enum(["news", "earnings", "macro", "analysis", "alert"]).optional(),
+    sentiment: z.enum(["bullish", "bearish", "neutral"]).optional(),
+    urlSource: z.string().max(500).optional(),
+    reactions: z.record(z.string(), z.number()).optional(),
+    comments: z
+      .array(
+        z.object({
+          id: z.string(),
+          author: z.string(),
+          text: z.string().max(1000),
+          date: z.string(),
+        })
+      )
+      .max(100)
+      .optional(),
   })
   .strict()
 
 export const hermesBriefingInputSchema = z
   .object({
+    id: z.string().min(1).max(120).optional(),
     date: z
       .string()
       .regex(HERMES_BRIEFING_DATE_REGEX, "La date doit suivre le format AAAA-MM-JJ."),
@@ -71,5 +87,5 @@ export const hermesBriefingStoreSchema = z.object({
 
 export type HermesBriefingStore = z.infer<typeof hermesBriefingStoreSchema>
 
-/** Nombre maximal de briefings conservés dans l'historique. */
-export const HERMES_BRIEFINGS_HISTORY_LIMIT = 30
+/** Nombre maximal de briefings conservés dans l'historique du feed. */
+export const HERMES_BRIEFINGS_HISTORY_LIMIT = 100

@@ -68,28 +68,70 @@ export type UpsertHermesBriefingResult = {
   replaced: boolean
 }
 
-/** Insère un briefing, ou remplace celui de même date et même source. */
+/** Insère un briefing ou post, ou remplace celui de même identifiant ou même date/source. */
 export const upsertHermesBriefing = async (
   input: HermesBriefingInput
 ): Promise<UpsertHermesBriefingResult> => {
   const parsedInput = hermesBriefingInputSchema.parse(input)
   const store = await readHermesBriefingStore()
 
+  const targetId = parsedInput.id ?? `${parsedInput.source}-${parsedInput.date}`
   const existing = store.briefings.find(
-    (briefing) => briefing.date === parsedInput.date && briefing.source === parsedInput.source
+    (briefing) =>
+      briefing.id === targetId ||
+      (!parsedInput.id && briefing.date === parsedInput.date && briefing.source === parsedInput.source)
   )
   const briefing = hermesBriefingSchema.parse({
     ...parsedInput,
-    id: existing?.id ?? `${parsedInput.source}-${parsedInput.date}`,
+    id: existing?.id ?? targetId,
     recuLe: new Date().toISOString(),
   })
 
-  const others = store.briefings.filter(
-    (item) => !(item.date === parsedInput.date && item.source === parsedInput.source)
-  )
+  const others = store.briefings.filter((item) => item.id !== briefing.id)
   await writeHermesBriefingStore({ briefings: [briefing, ...others] })
 
   return { briefing, replaced: Boolean(existing) }
+}
+
+/** Ajoute ou incrémente une réaction (bullish, bearish, insightful) sur un post. */
+export const toggleHermesBriefingReaction = async (
+  briefingId: string,
+  reaction: "bullish" | "bearish" | "insightful"
+): Promise<HermesBriefing | null> => {
+  const store = await readHermesBriefingStore()
+  const briefing = store.briefings.find((b) => b.id === briefingId)
+  if (!briefing) return null
+
+  const metadonnees = briefing.metadonnees ?? {}
+  const reactions = { ...(metadonnees.reactions ?? {}) }
+  reactions[reaction] = (reactions[reaction] ?? 0) + 1
+
+  briefing.metadonnees = { ...metadonnees, reactions }
+  await writeHermesBriefingStore(store)
+  return briefing
+}
+
+/** Ajoute un commentaire/note sous un post de briefing. */
+export const addHermesBriefingComment = async (
+  briefingId: string,
+  comment: { author: string; text: string }
+): Promise<HermesBriefing | null> => {
+  const store = await readHermesBriefingStore()
+  const briefing = store.briefings.find((b) => b.id === briefingId)
+  if (!briefing) return null
+
+  const metadonnees = briefing.metadonnees ?? {}
+  const comments = [...(metadonnees.comments ?? [])]
+  comments.push({
+    id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    author: comment.author,
+    text: comment.text,
+    date: new Date().toISOString(),
+  })
+
+  briefing.metadonnees = { ...metadonnees, comments }
+  await writeHermesBriefingStore(store)
+  return briefing
 }
 
 /** Dernier briefing reçu (date la plus récente), ou null si aucun. */
