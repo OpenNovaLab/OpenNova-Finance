@@ -39,6 +39,19 @@ export interface StockAction {
   status: "executed" | "pending" | "cancelled"
 }
 
+export interface PortfolioSnapshotAccount {
+  id: string
+  label: string
+  balanceCents: number
+}
+
+export interface PortfolioSnapshot {
+  asOfIso: string
+  currency: "CAD"
+  totalCents: number
+  accounts: PortfolioSnapshotAccount[]
+}
+
 export interface AllocationActual {
   id: string
   label: string
@@ -380,7 +393,8 @@ export const FINANCIAL_GOALS: FinancialGoal[] = [
 ]
 
 // Positions réelles d'Alex (source : classeur « Investissement Principale », onglet Dashboard,
-// relevé du 2026-10-25). Le classeur suit des positions, pas un historique de transactions :
+// relevé du 2026-10-25 ; quantités et prix moyens revérifiés inchangés le 2026-10-26).
+// Le classeur suit des positions, pas un historique de transactions :
 // chaque position est donc inscrite comme un achat exécuté au prix moyen payé, daté du relevé.
 // Une entrée par position et par compte (VEQT apparaît deux fois : Retraite et Disnat CELI CAD).
 // Prix en cents, dans la devise du titre (CAD pour TSE:*, USD pour les titres américains).
@@ -503,6 +517,20 @@ export const STOCK_ACTIONS: StockAction[] = [
     status: "executed",
   },
 ]
+
+// Relevé consolidé réel d'Alex (même source : classeur « Investissement Principale »,
+// onglet Dashboard, relevé du 2026-10-26). Valeurs agrégées seulement, en cents CAD ;
+// la valeur du CELI USD est celle convertie en CAD par le classeur.
+export const PORTFOLIO_SNAPSHOT: PortfolioSnapshot = {
+  asOfIso: "2026-10-26T00:00:00.000Z",
+  currency: "CAD",
+  totalCents: 11_579_045,
+  accounts: [
+    { id: "retraite", label: "Retraite", balanceCents: 7_361_463 },
+    { id: "celi-cad", label: "Disnat CELI CAD", balanceCents: 2_018_409 },
+    { id: "celi-usd", label: "Disnat CELI USD", balanceCents: 2_199_173 },
+  ],
+}
 
 export const ALLOCATION_ACTUAL: AllocationActual[] = [
   {
