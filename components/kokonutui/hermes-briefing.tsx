@@ -18,10 +18,14 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
+  Flame,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
 } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { loadSettingsSnapshot } from "@/lib/settings-store"
-import { hermesBriefingSourceLabel } from "@/lib/hermes-types"
 
 interface HermesBriefingProps {
   className?: string
@@ -48,6 +52,8 @@ export interface BriefingItem {
     symboles?: string[]
     category?: "news" | "earnings" | "macro" | "analysis" | "alert"
     sentiment?: "bullish" | "bearish" | "neutral"
+    isUrgent?: boolean
+    priority?: "normal" | "urgent" | "breaking"
     urlSource?: string
     reactions?: Record<string, number>
     comments?: CommentItem[]
@@ -225,6 +231,17 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     )
   }, [data])
 
+  // Extraction des dépêches urgentes / primeurs
+  const urgentBriefings = useMemo(() => {
+    return allBriefings.filter(
+      (b) =>
+        b.metadonnees?.isUrgent === true ||
+        b.metadonnees?.category === "alert" ||
+        b.metadonnees?.priority === "urgent" ||
+        b.metadonnees?.priority === "breaking"
+    )
+  }, [allBriefings])
+
   // Extraction de tous les symboles uniques pour la barre de filtres
   const availableSymbols = useMemo(() => {
     const symbols = new Set<string>()
@@ -234,7 +251,7 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     return Array.from(symbols).sort()
   }, [allBriefings])
 
-  // Filtrage
+  // Filtrage du flux standard
   const filteredBriefings = useMemo(() => {
     return allBriefings.filter((b) => {
       if (activeCategory !== "all") {
@@ -256,7 +273,6 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     briefingId: string,
     reaction: "bullish" | "bearish" | "insightful"
   ) => {
-    // Optimistic UI update
     setData((prev) => {
       if (!prev) return prev
       const updateList = (list: BriefingItem[]) =>
@@ -286,11 +302,45 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
         body: JSON.stringify({ id: briefingId, action: "react", reaction }),
       })
     } catch {
-      // Ignoré en arrière-plan
+      // Ignoré
     }
   }
 
-  // Gestion de l'ajout d'une note / commentaire
+  // Acquitter / marquer comme lue une alerte urgente
+  const handleDismissUrgent = async (briefingId: string) => {
+    setData((prev) => {
+      if (!prev) return prev
+      const updateList = (list: BriefingItem[]) =>
+        list.map((item) => {
+          if (item.id !== briefingId) return item
+          return {
+            ...item,
+            metadonnees: {
+              ...item.metadonnees,
+              isUrgent: false,
+              priority: "normal" as const,
+            },
+          }
+        })
+      return {
+        ...prev,
+        latest: prev.latest?.id === briefingId ? updateList([prev.latest])[0] : prev.latest,
+        history: updateList(prev.history),
+      }
+    })
+
+    try {
+      await fetch("/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: briefingId, action: "set_urgent", isUrgent: false }),
+      })
+    } catch {
+      // Ignoré
+    }
+  }
+
+  // Ajout d'une note de trading ou commentaire
   const handleAddComment = async (briefingId: string) => {
     const text = (commentInputs[briefingId] ?? "").trim()
     if (!text) return
@@ -335,9 +385,13 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
   const copy =
     uiLocale === "en"
       ? {
-          title: "Stock Market Feed & Briefings",
-          subtitle: "Continuous intelligence from Hermes Sentinel & Nova Muse on your 13 positions",
-          liveSentinel: "Live Sentinel · RTX 3080 Ti Monitoring Active",
+          title: "Stock Market Feed & Dual Intelligence",
+          subtitle: "Coordinated surveillance by Hermes Sentinel (continuous) & Nova Muse (2x daily)",
+          liveSentinel: "Hermes Sentinel (continuous) × Nova Muse (2x/day)",
+          urgentSectionTitle: "FLASH & BREAKING ALERTS IN PRIMEUR",
+          urgentSectionSubtitle: "Immediate attention required on your 13 stock holdings",
+          noUrgentActive: "All Clear · No critical market alerts active across your 13 positions",
+          acknowledgeUrgent: "Dismiss Alert",
           filterAllCategories: "All Posts",
           filterNews: "News",
           filterEarnings: "Earnings",
@@ -357,9 +411,13 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
           externalSource: "Source link",
         }
       : {
-          title: "Flux Boursier & Briefings",
-          subtitle: "Veille en continu par Hermes Sentinel & Nova Muse sur vos 13 positions",
-          liveSentinel: "Sentinel Active · RTX 3080 Ti en veille continue",
+          title: "Flux Boursier & Vigie Commune",
+          subtitle: "Surveillance coordonnée par Hermes Sentinel (en continu) & Nova Muse (2x par jour)",
+          liveSentinel: "Hermes Sentinel (en continu) × Nova Muse (2x/jour)",
+          urgentSectionTitle: "FLASH INFO & URGENCES EN PRIMEUR",
+          urgentSectionSubtitle: "Attention immédiate requise sur vos 13 positions boursières",
+          noUrgentActive: "Statut Vigie Stable · Aucune alerte critique en cours sur vos 13 positions",
+          acknowledgeUrgent: "Marquer comme lu",
           filterAllCategories: "Tous les flux",
           filterNews: "Actualités",
           filterEarnings: "Résultats",
@@ -392,9 +450,328 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     )
   }
 
+  // Composant interne pour rendre une carte de post
+  const renderCard = (briefing: BriefingItem, isUrgentSpotlight: boolean = false) => {
+    const isHermes = briefing.source === "hermes"
+    const category = briefing.metadonnees?.category ?? "analysis"
+    const sentiment = briefing.metadonnees?.sentiment ?? "neutral"
+    const isUrgent =
+      briefing.metadonnees?.isUrgent === true ||
+      briefing.metadonnees?.category === "alert" ||
+      briefing.metadonnees?.priority === "urgent" ||
+      briefing.metadonnees?.priority === "breaking"
+    const reactions = briefing.metadonnees?.reactions ?? {}
+    const comments = briefing.metadonnees?.comments ?? []
+    const isCommentsOpen = Boolean(expandedComments[briefing.id])
+
+    return (
+      <article
+        key={briefing.id}
+        className={cn(
+          "fx-panel rounded-2xl border backdrop-blur-md shadow-xs transition-all overflow-hidden",
+          isUrgentSpotlight
+            ? "border-rose-500/80 bg-gradient-to-br from-rose-950/40 via-card to-card/90 shadow-md shadow-rose-950/40 ring-1 ring-rose-500/30"
+            : isUrgent
+            ? "border-rose-500/60 bg-card/85 shadow-xs"
+            : "border-border/70 bg-card/75 hover:border-border/90"
+        )}
+      >
+        {/* Bandeau d'en-tête Urgent si applicable */}
+        {isUrgent && (
+          <div className="bg-gradient-to-r from-rose-600/30 via-amber-500/20 to-transparent px-4 py-1.5 border-b border-rose-500/30 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 text-rose-300 font-bold tracking-wide">
+              <Zap className="h-3.5 w-3.5 text-rose-400 animate-bounce" />
+              <span className="text-[11px] uppercase">⚡ Alerte en Primeur — Action immédiate requise</span>
+            </div>
+            {isUrgentSpotlight && (
+              <button
+                type="button"
+                onClick={() => void handleDismissUrgent(briefing.id)}
+                className="inline-flex items-center gap-1 rounded-md bg-rose-500/20 hover:bg-rose-500/40 px-2 py-0.5 text-[10px] font-semibold text-rose-200 transition-colors"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                <span>{copy.acknowledgeUrgent}</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* En-tête de la carte Sociale (Auteur, Avatar, Date, Badges) */}
+        <div className="p-4 sm:p-5 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            {/* Auteur */}
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  "relative flex items-center justify-center h-10 w-10 rounded-2xl border shadow-inner",
+                  isHermes
+                    ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 via-background to-teal-500/10 text-emerald-400"
+                    : "border-purple-500/30 bg-gradient-to-br from-purple-500/20 via-background to-indigo-500/10 text-purple-400"
+                )}
+              >
+                {isHermes ? <Cpu className="h-5 w-5" /> : <Cloud className="h-5 w-5" />}
+                <span
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
+                    isHermes ? "bg-emerald-500" : "bg-purple-500"
+                  )}
+                />
+              </div>
+
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h4 className="text-sm font-bold tracking-tight text-foreground">
+                    {isHermes ? "Hermes Sentinel" : "Nova Muse"}
+                  </h4>
+                  <span
+                    className={cn(
+                      "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                      isHermes
+                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                        : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                    )}
+                  >
+                    {isHermes ? "Local · En continu (RTX 3080 Ti)" : "Infonuagique · Point 2x/jour (Meta AI)"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatRelativeTime(briefing.recuLe, uiLocale)} ·{" "}
+                  <span className="font-mono">{briefing.date}</span>
+                  {briefing.metadonnees?.modele
+                    ? ` · ${briefing.metadonnees.modele.split(":")[0]}`
+                    : ""}
+                </p>
+              </div>
+            </div>
+
+            {/* Badges Sentiment & Catégorie */}
+            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
+              {sentiment === "bullish" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                  <TrendingUp className="h-3 w-3" />
+                  {copy.bullish}
+                </span>
+              )}
+              {sentiment === "bearish" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-400">
+                  <TrendingDown className="h-3 w-3" />
+                  {copy.bearish}
+                </span>
+              )}
+              {sentiment === "neutral" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/30 bg-zinc-500/10 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <Minus className="h-3 w-3" />
+                  {copy.neutral}
+                </span>
+              )}
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+                  isUrgent
+                    ? "border-rose-500/50 bg-rose-500/20 text-rose-300 font-bold"
+                    : "border-border/70 bg-accent/40 text-muted-foreground"
+                )}
+              >
+                {category}
+              </span>
+            </div>
+          </div>
+
+          {/* Titre du Post */}
+          <div className="mt-3">
+            <h3 className="text-base font-bold tracking-tight text-foreground hover:text-primary transition-colors">
+              {briefing.titre}
+            </h3>
+          </div>
+
+          {/* Badges Symboles / Actions mentionnées */}
+          {briefing.metadonnees?.symboles && briefing.metadonnees.symboles.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {briefing.metadonnees.symboles.map((sym) => {
+                const cleanSym = sym.replace(/^(NASDAQ|NYSE|BATS|TSE|NYSEARCA):/, "")
+                return (
+                  <button
+                    key={sym}
+                    type="button"
+                    onClick={() =>
+                      setActiveFilterSymbol((prev) => (prev === cleanSym ? null : cleanSym))
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[11px] font-bold font-mono transition-colors",
+                      isUrgent
+                        ? "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
+                        : "border-primary/20 bg-primary/5 text-primary hover:bg-primary/15"
+                    )}
+                  >
+                    <span>${cleanSym}</span>
+                  </button>
+                )
+              })}
+              {briefing.metadonnees.urlSource && (
+                <a
+                  href={briefing.metadonnees.urlSource}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-background/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+                >
+                  <ExternalLink className="h-2.5 w-2.5" />
+                  <span>{copy.externalSource}</span>
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Corps Markdown */}
+        <div className="px-4 sm:px-5 py-2">
+          <MarkdownContent content={briefing.contenuMarkdown} />
+        </div>
+
+        {/* Barre d'Engagement Social Facebook-style (Réactions & Commentaires) */}
+        <div className="mt-2 border-t border-border/50 bg-background/40 px-4 sm:px-5 py-2.5">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Réaction Bullish */}
+              <button
+                type="button"
+                onClick={() => void handleReaction(briefing.id, "bullish")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400 active:scale-95"
+              >
+                <span className="text-sm">🚀</span>
+                <span className="font-semibold text-emerald-400">
+                  {reactions.bullish ?? 0}
+                </span>
+                <span className="hidden sm:inline text-muted-foreground text-[11px]">
+                  {copy.bullish}
+                </span>
+              </button>
+
+              {/* Réaction Bearish */}
+              <button
+                type="button"
+                onClick={() => void handleReaction(briefing.id, "bearish")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400 active:scale-95"
+              >
+                <span className="text-sm">📉</span>
+                <span className="font-semibold text-rose-400">
+                  {reactions.bearish ?? 0}
+                </span>
+                <span className="hidden sm:inline text-muted-foreground text-[11px]">
+                  {copy.bearish}
+                </span>
+              </button>
+
+              {/* Réaction Pertinent */}
+              <button
+                type="button"
+                onClick={() => void handleReaction(briefing.id, "insightful")}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-400 active:scale-95"
+              >
+                <span className="text-sm">🧠</span>
+                <span className="font-semibold text-amber-400">
+                  {reactions.insightful ?? 0}
+                </span>
+                <span className="hidden sm:inline text-muted-foreground text-[11px]">
+                  {copy.insightful}
+                </span>
+              </button>
+            </div>
+
+            {/* Bouton Commentaires / Notes */}
+            <button
+              type="button"
+              onClick={() => toggleComments(briefing.id)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all active:scale-95",
+                isCommentsOpen
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-accent/40"
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>{copy.notes}</span>
+              <span className="rounded-full bg-accent px-1.5 py-0.2 text-[10px] font-bold">
+                {comments.length}
+              </span>
+              {isCommentsOpen ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </button>
+          </div>
+
+          {/* Section Déroulante des Commentaires & Notes */}
+          {isCommentsOpen && (
+            <div className="mt-3 pt-3 border-t border-border/40 space-y-3">
+              {comments.length > 0 ? (
+                <div className="space-y-2">
+                  {comments.map((comm) => (
+                    <div
+                      key={comm.id}
+                      className="rounded-xl border border-border/50 bg-background/60 p-2.5 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-foreground text-[11px]">
+                          {comm.author}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatRelativeTime(comm.date, uiLocale)}
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground leading-relaxed">{comm.text}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground italic">
+                  Aucune note enregistrée. Soyez le premier à commenter !
+                </p>
+              )}
+
+              {/* Zone d'ajout d'une note */}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={commentInputs[briefing.id] ?? ""}
+                  onChange={(e) =>
+                    setCommentInputs((prev) => ({
+                      ...prev,
+                      [briefing.id]: e.target.value,
+                    }))
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      void handleAddComment(briefing.id)
+                    }
+                  }}
+                  placeholder={copy.addNotePlaceholder}
+                  className="flex-1 rounded-xl border border-border/70 bg-background/80 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleAddComment(briefing.id)}
+                  disabled={
+                    !(commentInputs[briefing.id] ?? "").trim() ||
+                    Boolean(submittingComment[briefing.id])
+                  }
+                  className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                >
+                  <Send className="h-3 w-3" />
+                  <span>{copy.postNote}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </article>
+    )
+  }
+
   return (
     <div className={cn("w-full flex flex-col space-y-4", className)}>
-      {/* Barre d'en-tête du Feed avec statut Sentinel en direct */}
+      {/* Barre d'en-tête du Feed avec statut Sentinel & Muse */}
       <div className="fx-panel p-4 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -508,7 +885,51 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
         </div>
       </div>
 
-      {/* Liste des Cartes Sociales (Style Facebook / Social Feed) */}
+      {/* SECTION DÉDIÉE : FLASH INFO & URGENCES EN PRIMEUR (Breaking News) */}
+      {urgentBriefings.length > 0 ? (
+        <section className="space-y-3 rounded-2xl border border-rose-500/50 bg-gradient-to-br from-rose-950/20 via-background to-card p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-2 border-b border-rose-500/30 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
+                <Flame className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {copy.urgentSectionTitle}
+                  <span className="rounded-full bg-rose-500 px-1.5 py-0.2 text-[10px] font-extrabold text-white">
+                    {urgentBriefings.length}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  {copy.urgentSectionSubtitle}
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">
+              ⚡ Priorité Absolue
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {urgentBriefings.map((briefing) => renderCard(briefing, true))}
+          </div>
+        </section>
+      ) : (
+        <div className="fx-panel p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span className="text-[11px] text-foreground font-medium">
+              {copy.noUrgentActive}
+            </span>
+          </div>
+          <span className="text-[10px] text-emerald-400 font-semibold hidden sm:inline">
+            Surveillance 24/7 active
+          </span>
+        </div>
+      )}
+
+      {/* LISTE DES CARTES DU FLUX STANDARD */}
       {loading && allBriefings.length === 0 ? (
         <div className="fx-panel p-8 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
           <RefreshCw className="h-5 w-5 animate-spin text-primary" />
@@ -537,280 +958,7 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredBriefings.map((briefing) => {
-            const isHermes = briefing.source === "hermes"
-            const category = briefing.metadonnees?.category ?? "analysis"
-            const sentiment = briefing.metadonnees?.sentiment ?? "neutral"
-            const reactions = briefing.metadonnees?.reactions ?? {}
-            const comments = briefing.metadonnees?.comments ?? []
-            const isCommentsOpen = Boolean(expandedComments[briefing.id])
-
-            return (
-              <article
-                key={briefing.id}
-                className="fx-panel rounded-2xl border border-border/70 bg-card/75 backdrop-blur-md shadow-xs transition-all hover:border-border/90 overflow-hidden"
-              >
-                {/* En-tête de la carte Sociale (Auteur, Avatar, Date, Badges) */}
-                <div className="p-4 sm:p-5 pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    {/* Auteur */}
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "relative flex items-center justify-center h-10 w-10 rounded-2xl border shadow-inner",
-                          isHermes
-                            ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 via-background to-teal-500/10 text-emerald-400"
-                            : "border-purple-500/30 bg-gradient-to-br from-purple-500/20 via-background to-indigo-500/10 text-purple-400"
-                        )}
-                      >
-                        {isHermes ? <Cpu className="h-5 w-5" /> : <Cloud className="h-5 w-5" />}
-                        <span
-                          className={cn(
-                            "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background",
-                            isHermes ? "bg-emerald-500" : "bg-purple-500"
-                          )}
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <h4 className="text-sm font-bold tracking-tight text-foreground">
-                            {isHermes ? "Hermes Sentinel" : "Nova Muse"}
-                          </h4>
-                          <span
-                            className={cn(
-                              "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                              isHermes
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                            )}
-                          >
-                            {isHermes ? "Local · RTX 3080 Ti" : "Infonuagique · Meta AI"}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          {formatRelativeTime(briefing.recuLe, uiLocale)} ·{" "}
-                          <span className="font-mono">{briefing.date}</span>
-                          {briefing.metadonnees?.modele
-                            ? ` · ${briefing.metadonnees.modele.split(":")[0]}`
-                            : ""}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Badges Sentiment & Catégorie */}
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 shrink-0">
-                      {sentiment === "bullish" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-                          <TrendingUp className="h-3 w-3" />
-                          {copy.bullish}
-                        </span>
-                      )}
-                      {sentiment === "bearish" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-400">
-                          <TrendingDown className="h-3 w-3" />
-                          {copy.bearish}
-                        </span>
-                      )}
-                      {sentiment === "neutral" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-zinc-500/30 bg-zinc-500/10 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          <Minus className="h-3 w-3" />
-                          {copy.neutral}
-                        </span>
-                      )}
-                      <span className="rounded-full border border-border/70 bg-accent/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground capitalize">
-                        {category}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Titre du Post */}
-                  <div className="mt-3">
-                    <h3 className="text-base font-bold tracking-tight text-foreground hover:text-primary transition-colors">
-                      {briefing.titre}
-                    </h3>
-                  </div>
-
-                  {/* Badges Symboles / Actions mentionnées */}
-                  {briefing.metadonnees?.symboles && briefing.metadonnees.symboles.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {briefing.metadonnees.symboles.map((sym) => {
-                        const cleanSym = sym.replace(/^(NASDAQ|NYSE|BATS|TSE|NYSEARCA):/, "")
-                        return (
-                          <button
-                            key={sym}
-                            type="button"
-                            onClick={() =>
-                              setActiveFilterSymbol((prev) => (prev === cleanSym ? null : cleanSym))
-                            }
-                            className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-bold text-primary font-mono transition-colors hover:bg-primary/15"
-                          >
-                            <span>${cleanSym}</span>
-                          </button>
-                        )
-                      })}
-                      {briefing.metadonnees.urlSource && (
-                        <a
-                          href={briefing.metadonnees.urlSource}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-background/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:border-border transition-colors"
-                        >
-                          <ExternalLink className="h-2.5 w-2.5" />
-                          <span>{copy.externalSource}</span>
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Corps Markdown */}
-                <div className="px-4 sm:px-5 py-2">
-                  <MarkdownContent content={briefing.contenuMarkdown} />
-                </div>
-
-                {/* Barre d'Engagement Social Facebook-style (Réactions & Bouton Commentaires) */}
-                <div className="mt-2 border-t border-border/50 bg-background/40 px-4 sm:px-5 py-2.5">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      {/* Réaction Bullish */}
-                      <button
-                        type="button"
-                        onClick={() => void handleReaction(briefing.id, "bullish")}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400 active:scale-95"
-                      >
-                        <span className="text-sm">🚀</span>
-                        <span className="font-semibold text-emerald-400">
-                          {reactions.bullish ?? 0}
-                        </span>
-                        <span className="hidden sm:inline text-muted-foreground text-[11px]">
-                          {copy.bullish}
-                        </span>
-                      </button>
-
-                      {/* Réaction Bearish */}
-                      <button
-                        type="button"
-                        onClick={() => void handleReaction(briefing.id, "bearish")}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-400 active:scale-95"
-                      >
-                        <span className="text-sm">📉</span>
-                        <span className="font-semibold text-rose-400">
-                          {reactions.bearish ?? 0}
-                        </span>
-                        <span className="hidden sm:inline text-muted-foreground text-[11px]">
-                          {copy.bearish}
-                        </span>
-                      </button>
-
-                      {/* Réaction Pertinent */}
-                      <button
-                        type="button"
-                        onClick={() => void handleReaction(briefing.id, "insightful")}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-2.5 py-1.5 text-xs font-medium text-foreground transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-400 active:scale-95"
-                      >
-                        <span className="text-sm">🧠</span>
-                        <span className="font-semibold text-amber-400">
-                          {reactions.insightful ?? 0}
-                        </span>
-                        <span className="hidden sm:inline text-muted-foreground text-[11px]">
-                          {copy.insightful}
-                        </span>
-                      </button>
-                    </div>
-
-                    {/* Bouton Commentaires / Notes */}
-                    <button
-                      type="button"
-                      onClick={() => toggleComments(briefing.id)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all active:scale-95",
-                        isCommentsOpen
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-accent/40"
-                      )}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      <span>{copy.notes}</span>
-                      <span className="rounded-full bg-accent px-1.5 py-0.2 text-[10px] font-bold">
-                        {comments.length}
-                      </span>
-                      {isCommentsOpen ? (
-                        <ChevronUp className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Section Déroulante des Commentaires & Notes */}
-                  {isCommentsOpen && (
-                    <div className="mt-3 pt-3 border-t border-border/40 space-y-3">
-                      {/* Liste des commentaires existants */}
-                      {comments.length > 0 ? (
-                        <div className="space-y-2">
-                          {comments.map((comm) => (
-                            <div
-                              key={comm.id}
-                              className="rounded-xl border border-border/50 bg-background/60 p-2.5 text-xs space-y-1"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-foreground text-[11px]">
-                                  {comm.author}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {formatRelativeTime(comm.date, uiLocale)}
-                                </span>
-                              </div>
-                              <p className="text-muted-foreground leading-relaxed">{comm.text}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-muted-foreground italic">
-                          Aucune note enregistrée. Soyez le premier à commenter !
-                        </p>
-                      )}
-
-                      {/* Zone d'ajout d'une note */}
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="text"
-                          value={commentInputs[briefing.id] ?? ""}
-                          onChange={(e) =>
-                            setCommentInputs((prev) => ({
-                              ...prev,
-                              [briefing.id]: e.target.value,
-                            }))
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault()
-                              void handleAddComment(briefing.id)
-                            }
-                          }}
-                          placeholder={copy.addNotePlaceholder}
-                          className="flex-1 rounded-xl border border-border/70 bg-background/80 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => void handleAddComment(briefing.id)}
-                          disabled={
-                            !(commentInputs[briefing.id] ?? "").trim() ||
-                            Boolean(submittingComment[briefing.id])
-                          }
-                          className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                        >
-                          <Send className="h-3 w-3" />
-                          <span>{copy.postNote}</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </article>
-            )
-          })}
+          {filteredBriefings.map((briefing) => renderCard(briefing, false))}
         </div>
       )}
     </div>

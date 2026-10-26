@@ -142,6 +142,23 @@ PORTFOLIO_WATCHLIST = [
 # Analyses initiales riches pré-calculées pour le mode --seed
 SEED_POSTS = [
     {
+        "id": "hermes-alert-nuclear-uranium-01",
+        "symbol": "NYSEARCA:URNM",
+        "date": "2026-10-25",
+        "category": "alert",
+        "sentiment": "bullish",
+        "isUrgent": True,
+        "priority": "urgent",
+        "titre": "🚨 FLASH URGENT : Décret d'urgence sur l'enrichissement d'uranium & alimentation SMR des datacenters",
+        "urlSource": "https://finance.yahoo.com/quote/URNM",
+        "contenu": """### Alerte Sentinelle en Primeur
+**Événement critique à fort impact immédiat** sur vos positions `URNM` et `HURA` :
+
+- **Catalyseur immédiat** : Entrée en vigueur de restrictions renforcées sur les importations d'uranium et signature d'engagements fédéraux accélérés pour les réacteurs SMR.
+- **Impact sur votre portefeuille** : Hausse attendue de la prime spot sur les producteurs occidentaux et volatilité accrue à l'ouverture.
+- **Signal Sentinelle** : Priorité absolue pour Alex. Conserver la position sans céder à la précipitation, aucun rééquilibrage précipité requis.""",
+    },
+    {
         "id": "hermes-seed-avgo-01",
         "symbol": "NASDAQ:AVGO",
         "date": "2026-10-25",
@@ -315,6 +332,18 @@ def analyze_sentiment(title: str, text: str) -> str:
     return "neutral"
 
 
+def is_urgent_headline(title: str, text: str) -> bool:
+    """Détecte si une nouvelle requiert l'attention immédiate d'Alex (primeur/alerte)."""
+    combined = (title + " " + text).lower()
+    urgent_terms = [
+        "breaking", "urgent", "emergency", "crash", "plunge", "halt", "halted",
+        "sec charges", "sec probe", "investigation", "tariff", "warning", "chute",
+        "krach", "alerte", "enquête", "sanction", "default", "bankruptcy",
+        "downgrade to sell", "soar 15%", "jump 20%", "surge 20%", "plunge 10%", "drop 15%",
+    ]
+    return any(term in combined for term in urgent_terms)
+
+
 def post_to_opennova(base_url: str, bridge_key: str, payload: dict) -> bool:
     """Publie un post social sur OpenNova-Finance."""
     url = f"{base_url}/api/hermes/briefings"
@@ -364,6 +393,8 @@ def run_seed(base_url: str, bridge_key: str) -> None:
                 "symboles": [post["symbol"]],
                 "category": post["category"],
                 "sentiment": post["sentiment"],
+                "isUrgent": post.get("isUrgent", False),
+                "priority": post.get("priority", "normal"),
                 "urlSource": post["urlSource"],
                 "reactions": {
                     "bullish": 4 if post["sentiment"] == "bullish" else 1,
@@ -408,7 +439,8 @@ def scan_and_publish(base_url: str, bridge_key: str, watchlist: list, max_per_ti
                 continue
 
             sentiment = analyze_sentiment(art["title"], art["description"])
-            category = item.get("category_hint", "news")
+            is_urgent = is_urgent_headline(art["title"], art["description"])
+            category = "alert" if is_urgent else item.get("category_hint", "news")
 
             # Construction du corps Markdown
             markdown = f"""### Actualité Boursière & Impact Sentinelle
@@ -433,6 +465,8 @@ def scan_and_publish(base_url: str, bridge_key: str, watchlist: list, max_per_ti
                     "symboles": [symbol],
                     "category": category,
                     "sentiment": sentiment,
+                    "isUrgent": is_urgent,
+                    "priority": "urgent" if is_urgent else "normal",
                     "urlSource": art.get("link", ""),
                     "reactions": {
                         "insightful": 1,

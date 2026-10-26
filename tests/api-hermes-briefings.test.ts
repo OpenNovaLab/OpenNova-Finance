@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   listHermesBriefings: vi.fn(),
   toggleHermesBriefingReaction: vi.fn(),
   addHermesBriefingComment: vi.fn(),
+  setHermesBriefingUrgent: vi.fn(),
 }))
 
 vi.mock("@/lib/hermes-briefings-storage", () => ({
@@ -12,6 +13,7 @@ vi.mock("@/lib/hermes-briefings-storage", () => ({
   listHermesBriefings: mocks.listHermesBriefings,
   toggleHermesBriefingReaction: mocks.toggleHermesBriefingReaction,
   addHermesBriefingComment: mocks.addHermesBriefingComment,
+  setHermesBriefingUrgent: mocks.setHermesBriefingUrgent,
 }))
 
 import { GET, POST, PATCH } from "@/app/api/hermes/briefings/route"
@@ -260,5 +262,30 @@ describe("/api/hermes/briefings", () => {
       author: "Alex",
       text: "Position forte",
     })
+  })
+
+  it("PATCH permet de basculer le statut urgent d'un post (set_urgent)", async () => {
+    mocks.setHermesBriefingUrgent.mockResolvedValueOnce({
+      ...storedBriefing,
+      metadonnees: { ...storedBriefing.metadonnees, isUrgent: true, priority: "urgent" },
+    })
+
+    const response = await PATCH(
+      new Request("http://localhost/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "hermes-2026-10-25",
+          action: "set_urgent",
+          isUrgent: true,
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { ok: boolean; briefing: { metadonnees?: { isUrgent?: boolean } } }
+    expect(payload.ok).toBe(true)
+    expect(payload.briefing.metadonnees?.isUrgent).toBe(true)
+    expect(mocks.setHermesBriefingUrgent).toHaveBeenCalledWith("hermes-2026-10-25", true)
   })
 })

@@ -7,6 +7,7 @@ import {
 import {
   addHermesBriefingComment,
   listHermesBriefings,
+  setHermesBriefingUrgent,
   toggleHermesBriefingReaction,
   upsertHermesBriefing,
 } from "@/lib/hermes-briefings-storage"
@@ -191,6 +192,20 @@ export const PATCH = async (request: Request) => {
       )
     }
     const updated = await addHermesBriefingComment(payload.id, { author, text })
+    if (!updated) {
+      return NextResponse.json(
+        { ok: false, error: "not_found", message: "Post introuvable." },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json({ ok: true, briefing: updated })
+  }
+
+  if (payload.action === "toggle_urgent" || payload.action === "set_urgent") {
+    const isUrgent = typeof (payload as { isUrgent?: unknown }).isUrgent === "boolean"
+      ? (payload as { isUrgent: boolean }).isUrgent
+      : true
+    const updated = await setHermesBriefingUrgent(payload.id, isUrgent)
     if (!updated) {
       return NextResponse.json(
         { ok: false, error: "not_found", message: "Post introuvable." },

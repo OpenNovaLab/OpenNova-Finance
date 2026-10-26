@@ -134,6 +134,25 @@ export const addHermesBriefingComment = async (
   return briefing
 }
 
+/** Définit ou acquitte le statut d'urgence/primeur d'un post. */
+export const setHermesBriefingUrgent = async (
+  briefingId: string,
+  isUrgent: boolean
+): Promise<HermesBriefing | null> => {
+  const store = await readHermesBriefingStore()
+  const briefing = store.briefings.find((b) => b.id === briefingId)
+  if (!briefing) return null
+
+  const metadonnees = briefing.metadonnees ?? {}
+  briefing.metadonnees = {
+    ...metadonnees,
+    isUrgent,
+    priority: isUrgent ? "urgent" : "normal",
+  }
+  await writeHermesBriefingStore(store)
+  return briefing
+}
+
 /** Dernier briefing reçu (date la plus récente), ou null si aucun. */
 export const getLatestHermesBriefing = async (): Promise<HermesBriefing | null> => {
   const store = await readHermesBriefingStore()

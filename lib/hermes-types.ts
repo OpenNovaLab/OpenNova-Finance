@@ -43,6 +43,8 @@ export const hermesBriefingMetadataSchema = z
     symboles: z.array(z.string().min(1).max(24)).max(100).optional(),
     category: z.enum(["news", "earnings", "macro", "analysis", "alert"]).optional(),
     sentiment: z.enum(["bullish", "bearish", "neutral"]).optional(),
+    isUrgent: z.boolean().optional(),
+    priority: z.enum(["normal", "urgent", "breaking"]).optional(),
     urlSource: z.string().max(500).optional(),
     reactions: z.record(z.string(), z.number()).optional(),
     comments: z
