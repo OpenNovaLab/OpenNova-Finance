@@ -94,3 +94,15 @@ Hermes et Muse concentrent leurs analyses sur ces 13 titres réels :
 11. `NYSE:VRT` — Vertiv Holdings Co.
 12. `NASDAQ:TDAC` — Third Derivative / SPAC
 13. Cash & liquidités opérationnelles
+
+---
+
+## 5. Indicateur d'État Opérationnel d'Hermes
+
+L'interface OpenNova-Finance affiche en temps réel l'état d'activité d'Hermes en haut du flux :
+
+- 🟢 **« Au travail »** : Scan actif des dépêches en cours ou inférence Nemotron sur la RTX 3080 Ti locale.
+- 🟡 **« En attente »** : Marchés ouverts (08:00 – 17:30 EDT lun-ven), en veille passive entre les rondes de 15 minutes.
+- 🌙 **« Au repos »** : Clôture des marchés (soirée/nuit ou week-end).
+
+L'état est exposé via l'endpoint public `GET /api/hermes/status` et peut être mis à jour par le pont via `POST/PATCH /api/hermes/status`. Alex peut également basculer manuellement l'état ou réactiver la gestion automatique directement depuis le panneau d'état du dashboard.

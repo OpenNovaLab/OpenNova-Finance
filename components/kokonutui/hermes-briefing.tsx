@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   Zap,
+  Moon,
+  Clock,
 } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { loadSettingsSnapshot } from "@/lib/settings-store"
@@ -65,6 +67,17 @@ interface BriefingsResponse {
   enabled?: boolean
   latest: BriefingItem | null
   history: BriefingItem[]
+}
+
+export interface HermesStatus {
+  state: "working" | "idle" | "resting"
+  label: string
+  detail: string
+  lastRun?: string
+  nextRun?: string
+  hardware?: string
+  mode?: "auto" | "manual"
+  updatedAt: string
 }
 
 const HERMES_UI_ENABLED = process.env.NEXT_PUBLIC_HERMES_ENABLED === "true"
@@ -185,6 +198,76 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
   const [submittingComment, setSubmittingComment] = useState<Record<string, boolean>>({})
 
+  const [hermesStatus, setHermesStatus] = useState<HermesStatus | null>(null)
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [togglingStatus, setTogglingStatus] = useState(false)
+
+  const loadHermesStatus = async () => {
+    if (!HERMES_UI_ENABLED) return
+    try {
+      const response = await fetch("/api/hermes/status", { cache: "no-store" })
+      if (response.ok) {
+        const payload = (await response.json()) as { ok: boolean; status: HermesStatus }
+        if (payload.ok && payload.status) {
+          setHermesStatus(payload.status)
+        }
+      }
+    } catch {
+      // Ignoré
+    }
+  }
+
+  const handleSetHermesState = async (nextState: "working" | "idle" | "resting") => {
+    setTogglingStatus(true)
+    try {
+      const response = await fetch("/api/hermes/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          state: nextState,
+          mode: "manual",
+          detail:
+            nextState === "working"
+              ? "Analyse active forcée sur RTX 3080 Ti"
+              : nextState === "idle"
+              ? "En attente forcée · Veille active"
+              : "Mis au repos par Alex · Veille inactive",
+        }),
+      })
+      if (response.ok) {
+        const payload = (await response.json()) as { ok: boolean; status: HermesStatus }
+        if (payload.ok && payload.status) {
+          setHermesStatus(payload.status)
+        }
+      }
+    } catch {
+      // Ignoré
+    } finally {
+      setTogglingStatus(false)
+    }
+  }
+
+  const handleResetHermesAuto = async () => {
+    setTogglingStatus(true)
+    try {
+      const response = await fetch("/api/hermes/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset_auto" }),
+      })
+      if (response.ok) {
+        const payload = (await response.json()) as { ok: boolean; status: HermesStatus }
+        if (payload.ok && payload.status) {
+          setHermesStatus(payload.status)
+        }
+      }
+    } catch {
+      // Ignoré
+    } finally {
+      setTogglingStatus(false)
+    }
+  }
+
   useEffect(() => {
     const syncLocale = () => {
       const snapshot = loadSettingsSnapshot()
@@ -199,9 +282,12 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
     if (!HERMES_UI_ENABLED) return
     setLoading(true)
     try {
-      const response = await fetch("/api/hermes/briefings", { cache: "no-store" })
-      if (!response.ok) throw new Error("load_failed")
-      const payload = (await response.json()) as BriefingsResponse
+      const [briefingsRes] = await Promise.all([
+        fetch("/api/hermes/briefings", { cache: "no-store" }),
+        loadHermesStatus(),
+      ])
+      if (!briefingsRes.ok) throw new Error("load_failed")
+      const payload = (await briefingsRes.json()) as BriefingsResponse
       setData(payload)
     } catch {
       setData((prev) => prev ?? { ok: false, latest: null, history: [] })
@@ -212,10 +298,17 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
 
   useEffect(() => {
     void loadBriefings()
+    void loadHermesStatus()
     const intervalId = window.setInterval(() => {
       void loadBriefings()
     }, 45_000)
-    return () => window.clearInterval(intervalId)
+    const statusIntervalId = window.setInterval(() => {
+      void loadHermesStatus()
+    }, 15_000)
+    return () => {
+      window.clearInterval(intervalId)
+      window.clearInterval(statusIntervalId)
+    }
   }, [])
 
   // Liste de tous les briefings uniques (latest + history)
@@ -783,7 +876,7 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
               </span>
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-bold tracking-tight text-foreground">
                   {copy.title}
                 </h3>
@@ -791,6 +884,56 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
                   <Radio className="h-2.5 w-2.5 animate-pulse text-emerald-400" />
                   {copy.liveSentinel}
                 </span>
+
+                {/* Badge d'état interactif d'Hermes */}
+                <button
+                  type="button"
+                  onClick={() => setShowStatusModal((prev) => !prev)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs",
+                    hermesStatus?.state === "working"
+                      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-400"
+                      : hermesStatus?.state === "idle"
+                      ? "border-amber-500/50 bg-amber-500/15 text-amber-400"
+                      : "border-indigo-400/40 bg-indigo-500/15 text-indigo-300"
+                  )}
+                  title="Cliquer pour afficher les détails et contrôler l'état d'Hermes"
+                >
+                  <span className="relative flex h-2 w-2">
+                    {hermesStatus?.state === "working" && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span
+                      className={cn(
+                        "relative inline-flex rounded-full h-2 w-2",
+                        hermesStatus?.state === "working"
+                          ? "bg-emerald-400"
+                          : hermesStatus?.state === "idle"
+                          ? "bg-amber-400"
+                          : "bg-indigo-400"
+                      )}
+                    ></span>
+                  </span>
+                  <span>
+                    Hermes :{" "}
+                    {hermesStatus?.state === "working"
+                      ? "Au travail"
+                      : hermesStatus?.state === "idle"
+                      ? "En attente"
+                      : "Au repos"}
+                  </span>
+                  {hermesStatus?.mode === "manual" && (
+                    <span className="text-[9px] uppercase px-1 rounded bg-accent/80 text-foreground font-mono">
+                      manuel
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={cn(
+                      "h-3 w-3 text-muted-foreground transition-transform duration-200",
+                      showStatusModal && "rotate-180"
+                    )}
+                  />
+                </button>
               </div>
               <p className="text-[11px] text-muted-foreground">{copy.subtitle}</p>
             </div>
@@ -811,6 +954,124 @@ export default function HermesBriefing({ className }: HermesBriefingProps) {
             </button>
           </div>
         </div>
+
+        {/* Panneau rétractable de contrôle et détails du statut Hermes */}
+        {showStatusModal && (
+          <div className="mt-3.5 pt-3 border-t border-border/60 rounded-xl bg-card/80 p-3.5 space-y-3 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={cn(
+                    "p-2 rounded-xl border flex items-center justify-center shrink-0",
+                    hermesStatus?.state === "working"
+                      ? "border-emerald-500/40 bg-emerald-500/20 text-emerald-400"
+                      : hermesStatus?.state === "idle"
+                      ? "border-amber-500/40 bg-amber-500/20 text-amber-400"
+                      : "border-indigo-500/40 bg-indigo-500/20 text-indigo-300"
+                  )}
+                >
+                  {hermesStatus?.state === "working" ? (
+                    <Zap className="h-4 w-4 animate-pulse" />
+                  ) : hermesStatus?.state === "idle" ? (
+                    <Clock className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground">
+                      État :{" "}
+                      {hermesStatus?.state === "working"
+                        ? "🟢 Au travail"
+                        : hermesStatus?.state === "idle"
+                        ? "🟡 En attente"
+                        : "🌙 Au repos"}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      ({hermesStatus?.mode === "manual" ? "Contrôle forcé manuel" : "Planifié automatiquement selon marchés"})
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {hermesStatus?.detail || "Surveillance active des 13 actions"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-muted-foreground sm:text-right space-y-0.5">
+                <div>
+                  <span className="font-semibold text-foreground">Matériel :</span>{" "}
+                  {hermesStatus?.hardware || "RTX 3080 Ti (12GB) · Nemotron 3.5"}
+                </div>
+                <div>
+                  <span className="font-semibold text-foreground">Prochaine ronde :</span>{" "}
+                  {hermesStatus?.nextRun || "~15 min"}
+                </div>
+              </div>
+            </div>
+
+            {/* Sélecteur d'état rapide pour Alex */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40 text-xs">
+              <span className="text-[11px] text-muted-foreground font-medium">
+                Changer l&apos;état d&apos;Hermes :
+              </span>
+              <button
+                type="button"
+                disabled={togglingStatus}
+                onClick={() => void handleSetHermesState("working")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
+                  hermesStatus?.state === "working" && hermesStatus?.mode === "manual"
+                    ? "bg-emerald-500 text-white shadow-xs"
+                    : "border border-border/60 bg-background/60 hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/40 text-foreground"
+                )}
+              >
+                🟢 Au travail
+              </button>
+              <button
+                type="button"
+                disabled={togglingStatus}
+                onClick={() => void handleSetHermesState("idle")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
+                  hermesStatus?.state === "idle" && hermesStatus?.mode === "manual"
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "border border-border/60 bg-background/60 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40 text-foreground"
+                )}
+              >
+                🟡 En attente
+              </button>
+              <button
+                type="button"
+                disabled={togglingStatus}
+                onClick={() => void handleSetHermesState("resting")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all active:scale-95",
+                  hermesStatus?.state === "resting" && hermesStatus?.mode === "manual"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "border border-border/60 bg-background/60 hover:bg-indigo-500/10 hover:text-indigo-300 hover:border-indigo-500/40 text-foreground"
+                )}
+              >
+                🌙 Au repos
+              </button>
+              <button
+                type="button"
+                disabled={togglingStatus}
+                onClick={() => void handleResetHermesAuto()}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ml-auto active:scale-95",
+                  hermesStatus?.mode === "auto"
+                    ? "border border-primary/40 bg-primary/10 text-primary font-semibold"
+                    : "border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground"
+                )}
+                title="Reprendre la planification automatique basée sur les heures de marché"
+              >
+                <RefreshCw className={cn("h-3 w-3", togglingStatus && "animate-spin")} />
+                <span>Mode Automatique</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Barre de filtres par Catégorie et par Ticker */}
         <div className="mt-3.5 pt-3 border-t border-border/50 flex flex-col gap-2.5">
