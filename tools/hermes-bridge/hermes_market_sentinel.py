@@ -373,6 +373,43 @@ def post_to_opennova(base_url: str, bridge_key: str, payload: dict) -> bool:
         return False
 
 
+def update_sentinel_status(base_url: str, bridge_key: str, state: str, detail: str) -> None:
+    """Met à jour le statut opérationnel d'Hermes sur OpenNova-Finance."""
+    url = f"{base_url}/api/hermes/status"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    payload = {
+        "state": state,
+        "detail": detail,
+        "lastRun": now_iso,
+        "hardware": "RTX 3080 Ti (12GB) · Nemotron 3.5",
+        "mode": "auto",
+    }
+    # Sauvegarde locale miroir
+    try:
+        status_file = os.path.join(os.path.dirname(__file__), ".sentinel_status.json")
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump({**payload, "updatedAt": now_iso}, f, indent=2)
+    except Exception:
+        pass
+
+    try:
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "Accept": "application/json",
+                "x-bridge-key": bridge_key,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5):
+            pass
+    except Exception:
+        pass
+
+
 def run_seed(base_url: str, bridge_key: str) -> None:
     """Injecte les posts riches de démarrage pour alimenter le flux immédiatement."""
     print("=== Injection du flux boursier initial (Seed) ===")
@@ -415,6 +452,7 @@ def run_seed(base_url: str, bridge_key: str) -> None:
 
 def scan_and_publish(base_url: str, bridge_key: str, watchlist: list, max_per_ticker: int = 1) -> int:
     """Scanne les actualités en direct pour la liste de titres et publie les nouveaux articles."""
+    update_sentinel_status(base_url, bridge_key, "working", f"Analyse en cours sur RTX 3080 Ti ({len(watchlist)} actions surveillées)")
     seen = load_seen_news()
     total_posted = 0
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -486,6 +524,7 @@ def scan_and_publish(base_url: str, bridge_key: str, watchlist: list, max_per_ti
                 break
 
     save_seen_news(seen)
+    update_sentinel_status(base_url, bridge_key, "idle", f"Ronde terminée ({total_posted} publication(s)) · Prochaine ronde ~15 min")
     print(f"[Sentinel] Ronde terminée : {total_posted} nouvelle(s) publication(s).")
     return total_posted
 

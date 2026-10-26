@@ -33,3 +33,4 @@ next-env.d.ts
 .nova-pickup-state.json
 tools/hermes-bridge/.nova-pickup-state.json
 tools/hermes-bridge/.sentinel_seen_news.json
+tools/hermes-bridge/.sentinel_status.json
