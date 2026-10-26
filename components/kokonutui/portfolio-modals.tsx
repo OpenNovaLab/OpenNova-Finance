@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { Trash2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   parseCurrencyToCents,
   type AccountItem,
@@ -150,11 +151,20 @@ export function AccountModal({ isOpen, onClose, onSave, onDelete, initialData }:
               step="0.01"
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
+              disabled={type === "investment"}
               required
-              className="w-full pl-7 pr-3 py-2 rounded-lg border border-border/60 bg-background/40 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+              className={cn(
+                "w-full pl-7 pr-3 py-2 rounded-lg border border-border/60 bg-background/40 text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+                type === "investment" && "opacity-70 cursor-not-allowed bg-muted/20"
+              )}
               placeholder="0.00"
             />
           </div>
+          {type === "investment" && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Calculé automatiquement à partir de vos positions boursières (Actions &amp; ETFs).
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium text-muted-foreground mb-1">Account Type</label>
