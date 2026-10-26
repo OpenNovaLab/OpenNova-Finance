@@ -242,6 +242,23 @@ python tools\hermes-bridge\hermes_market_sentinel.py --daemon --interval 900
 
 Une tâche planifiée Windows `OpenNova_Hermes_Sentinel` est enregistrée pour exécuter la ronde toutes les 15 minutes en arrière-plan.
 
+## Contrôles Bureau & Démarrage Automatique au Boot
+
+Pour une gestion fluide au quotidien sans monopoliser inutilement la machine ou le GPU NVIDIA RTX 3080 Ti :
+
+1. **Au démarrage du PC (sans déverrouiller la session)** :
+   - Le script `INSTALLER-DEMARRAGE-AU-BOOT.bat` (sur le Bureau) enregistre la tâche système `OpenNova_Boot_Daemon` (`/SC ONSTART`, compte `SYSTEM`).
+   - Dès la mise sous tension de l'ordinateur, le serveur Next.js (port 3000) et les sentinelles Hermes / Muse s'initialisent avant même la saisie du mot de passe Windows.
+   - Si l'ordinateur est éteint la nuit, les tâches planifiées ont le réglage `StartWhenAvailable: True` pour rattraper immédiatement les vérifications au rallumage le matin.
+
+2. **Arrêt immédiat en 1 clic (mode Jeux / GPU 100% libre)** :
+   - Fichier Bureau : `STOP-OPENNOVA-ET-HERMES.bat`.
+   - Ferme le port 3000, désactive les tâches planifiées, tue les scripts Python sentinelles et bascule les agents en mode `Au repos (mode manuel)` avec confirmation explicite.
+
+3. **Relance en 1 clic** :
+   - Fichier Bureau : `DEMARRER-OPENNOVA-ET-HERMES.bat`.
+   - Réactive les tâches planifiées, lance le serveur Next.js en arrière-plan, effectue un scan immédiat et ouvre le tableau de bord dans le navigateur (`http://localhost:3000/dashboard#briefing-hermes`).
+
 ## Sécurité
 
 - Aucun port entrant : le pont initie toutes les connexions.

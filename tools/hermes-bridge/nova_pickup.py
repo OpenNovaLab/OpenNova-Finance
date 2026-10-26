@@ -215,6 +215,11 @@ def main() -> int:
         action="store_true",
         help="Récupère, liste et valide les briefings, sans rien publier ni écrire l'état.",
     )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Effectuer une seule relève des dépôts puis quitter",
+    )
     args = parser.parse_args()
 
     repo = Path(args.repo).expanduser().resolve()
@@ -225,6 +230,14 @@ def main() -> int:
     )
     base_url = args.base_url.rstrip("/")
     bridge_key = os.environ.get("NOVA_BRIDGE_KEY", "").strip()
+    if not bridge_key:
+        env_local = repo / ".env.local"
+        if env_local.exists():
+            with open(env_local, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("NOVA_BRIDGE_KEY="):
+                        bridge_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        break
 
     if not (repo / ".git").exists():
         print(f"ERREUR : {repo} n'est pas un clone git.", file=sys.stderr)
@@ -298,6 +311,13 @@ def main() -> int:
         print(f"Dry-run terminé : {published} briefing(s) à publier, {failures} échec(s).")
     else:
         print(f"Terminé : {published} briefing(s) publié(s), {failures} échec(s).")
+        if published == 0 and failures == 0:
+            update_muse_status(
+                base_url,
+                bridge_key,
+                "resting",
+                "Veille active · Dépôts à jour · Prochain point pré-marché lundi ~08:05 EDT",
+            )
     return 1 if failures else 0
 
 
