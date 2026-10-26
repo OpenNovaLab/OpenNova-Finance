@@ -104,3 +104,38 @@ describe("portfolio-data utilities", () => {
     expect(updated[0].balanceCents).toBe(100_000)
   })
 })
+
+describe("stock actions (positions réelles, classeur « Investissement Principale »)", () => {
+  it("keeps one executed position per holding and account (13 positions)", () => {
+    expect(STOCK_ACTIONS).toHaveLength(13)
+    expect(STOCK_ACTIONS.every((action) => action.status === "executed")).toBe(true)
+    // VEQT est détenu dans deux comptes distincts (Retraite et Disnat CELI CAD).
+    expect(STOCK_ACTIONS.filter((action) => action.symbol === "TSE:VEQT")).toHaveLength(2)
+  })
+
+  it("matches the quantities and average prices verified in the workbook on 2026-10-26", () => {
+    const byId = new Map(STOCK_ACTIONS.map((action) => [action.id, action]))
+    // [id, symbole, quantité, prix moyen en cents] — onglet Dashboard du classeur.
+    const expected: Array<[string, string, number, number]> = [
+      ["1", "TSE:VEQT", 1100, 5523],
+      ["2", "TSE:PAVE", 81, 2808],
+      ["3", "TSE:HURA", 94, 5308],
+      ["4", "TSE:MTRX", 93, 3508],
+      ["5", "TSE:VEQT", 281, 6112],
+      ["6", "NASDAQ:BOTZ", 51, 3830],
+      ["7", "KOID", 11, 3887],
+      ["8", "NYSEARCA:URNM", 13, 4763],
+      ["9", "NYSEARCA:VT", 77, 15527],
+      ["10", "NASDAQ:AVGO", 1, 34424],
+      ["11", "NASDAQ:ISRG", 1, 35082],
+      ["12", "NYSE:VRT", 1, 25116],
+      ["13", "NASDAQ:TDAC", 3, 1090],
+    ]
+    for (const [id, symbol, shares, priceCents] of expected) {
+      const action = byId.get(id)
+      expect(action?.symbol).toBe(symbol)
+      expect(action?.shares).toBe(shares)
+      expect(action?.priceCents).toBe(priceCents)
+    }
+  })
+})
