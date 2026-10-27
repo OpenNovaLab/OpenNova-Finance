@@ -252,7 +252,8 @@ export const formatRelativeTimestampFromIso = (valueIso: string) => {
 }
 
 // Positions réelles d'Alex (source : classeur « Investissement Principale », onglet Dashboard,
-// relevé du 2026-10-25). Le classeur suit des positions, pas un historique de transactions :
+// relevé du 2026-10-25 ; quantités et prix moyens revérifiés inchangés le 2026-10-26).
+// Le classeur suit des positions, pas un historique de transactions :
 // chaque position est donc inscrite comme un achat exécuté au prix moyen payé, daté du relevé.
 // Une entrée par position et par compte (VEQT apparaît deux fois : Retraite et Disnat CELI CAD).
 // Prix en cents, dans la devise du titre (CAD pour TSE:*, USD pour les titres américains).
