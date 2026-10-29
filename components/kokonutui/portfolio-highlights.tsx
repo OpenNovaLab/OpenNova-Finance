@@ -26,6 +26,7 @@ import {
   type GrowthToolkitData,
 } from "@/lib/portfolio-growth-store"
 import type { PaperTradingOverview } from "@/lib/trading-types"
+import { WidgetEmptyState } from "./widget-state"
 
 interface PortfolioHighlightsProps {
   className?: string
@@ -253,7 +254,7 @@ export default function PortfolioHighlights({ className }: PortfolioHighlightsPr
             {copy.prioritiesTitle}
           </h3>
           {priorities.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{copy.noPriorities}</p>
+            <WidgetEmptyState>{copy.noPriorities}</WidgetEmptyState>
           ) : (
             <div className="space-y-2">
               {priorities.map((item) => (
@@ -295,7 +296,7 @@ export default function PortfolioHighlights({ className }: PortfolioHighlightsPr
             {copy.alertsTitle}
           </h3>
           {recentAlerts.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{copy.noAlerts}</p>
+            <WidgetEmptyState>{copy.noAlerts}</WidgetEmptyState>
           ) : (
             <ul className="space-y-2">
               {recentAlerts.map((alert) => (
