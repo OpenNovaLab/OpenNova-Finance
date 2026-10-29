@@ -1,0 +1,24 @@
+{
+  "id": "nova-2026-10-29-urgent-amazon",
+  "date": "2026-10-29",
+  "source": "nova",
+  "titre": "🚨 FLASH URGENT : Amazon rate BPA et revenus, dépenses de 77,3 G$ et flux libre −42,4 G$ — −~11 % après la clôture, Intel chute aussi",
+  "contenuMarkdown": "# 🚨 FLASH URGENT — Amazon rate BPA et revenus après la clôture : dépenses de 77,3 G$ au trimestre, flux libre de −42,4 G$ sur 12 mois, titre −~11 % après-Bourse\n\n## Faits (publiés jeudi 29 octobre 2026 à ~16 h 03 HE, après la clôture)\n\n- **BPA : 1,89 $ US**, sous le consensus (~1,97 $) ; **ventes nettes : 201,9 G$ US**, juste sous les ~202,3 G$ attendus (+12 % sur un an).\n- **AWS passe son test** : ventes de **46,0 G$ US, +39 %** hors change — au-dessus des ~45,7 G$ attendus ; rythme annualisé ~184 G$ ; croissance projetée au-dessus de 40 % en 2027 et 2028 selon la direction.\n- **Bénéfice d'exploitation : 28,1 G$**, nettement au-dessus des ~26,1 G$ attendus ; marge d'exploitation record de **13,9 %** (contre 12,9 % attendus).\n- **Le point qui a fait chuter le titre — le même qu'Alphabet hier : la trésorerie et les dépenses.** Dépenses d'investissement du trimestre de **77,3 G$**, très au-dessus des ~57,5 G$ attendus ; orientation annuelle maintenue à **~220 G$ pour 2026** ; flux de trésorerie libre des 12 derniers mois : **sortie de −42,4 G$**.\n- **Prévisions T4 sous le point milieu du consensus** : ventes 240–247 G$ (point milieu ~244 G$ contre ~245 G$ attendus), bénéfice d'exploitation 28,5–33,5 G$ (point milieu ~31 G$ contre ~33 G$ attendus).\n- **Réaction** : titre en baisse d'environ **11 % après la clôture** (MarketFlux), après une clôture régulière déjà à **243,79 $ (−4,25 %)**. **Intel** a aussi publié après la clôture : prévisions de revenus T4 de **15–16 G$** contre ~17,05 G$ attendus — titre en forte baisse après-Bourse, pression supplémentaire sur les puces demain.\n\n## Impact direct sur tes positions\n\n- **NASDAQ:AVGO, NASDAQ:BOTZ, KOID, TSE:MTRX** : exposition à l'ouverture de vendredi — le complexe IA/puces digérera en même temps le −12,64 % d'Alphabet d'aujourd'hui, le rouge après-Bourse d'Amazon et les prévisions d'Intel. Aucune nouvelle propre à ces titres.\n- **NYSE:VRT** : lecture à double sens. Négatif : le sentiment « financement des dépenses IA ». Positif et établi : la demande sous-jacente est confirmée une troisième fois en 48 heures (Azure +48 %, AWS +39 %, commandes Vertiv +100 %) — et VRT a déjà tenu +1,23 % aujourd'hui dans un Nasdaq à −1,38 %.\n- **Fonds larges (TSE:VEQT, NYSEARCA:VT)** : Amazon est une pondération importante des indices US ; un recul de ~11 % qui tient à l'ouverture pèsera mécaniquement, partiellement compensé si la rotation et l'amplitude positive d'aujourd'hui se maintiennent.\n\n## Ce qui reste incertain\n\n- **L'ampleur à l'ouverture de vendredi** : les volumes après-Bourse sont minces ; la conférence d'Amazon (17 h HE) peut préciser les dépenses 2027 et modérer ou aggraver la réaction.\n- **Le fait établi, lui, ne dépend pas de l'ouverture** : en 24 heures, deux des trois géants testés (Alphabet, Amazon) ont affiché un flux libre négatif sous le poids des dépenses IA, pendant que Microsoft passait le test (flux libre +18,6 G$). Le barème du marché pour tout le secteur — AVGO et VRT compris — est désormais la conversion des dépenses en trésorerie.\n- **Cameco publie demain avant l'ouverture** (consensus BPA ~0,19–0,23 $) : la matinée de vendredi combinera donc deux lectures indépendantes — l'uranium (URNM, HURA) et la transmission Amazon/Intel (puces et IA).\n\n*Sources vérifiées le soir du 29 octobre 2026 : MarketFlux (Amazon −~11 % après la clôture, dépenses 77,3 G$ contre ~57,5 G$ attendus), Seeking Alpha et communiqués via Grafa/Unite.ai (BPA 1,89 $, ventes 201,9 G$ +12 %, AWS 46,0 G$ +39 %, bénéfice d'exploitation 28,1 G$, marge 13,9 %, flux libre 12 mois −42,4 G$, prévisions T4 240–247 G$ / 28,5–33,5 G$), Finnhub (clôture régulière AMZN 243,79 $, −4,25 %), StockMarketWatch (Intel : prévisions T4 15–16 G$ contre ~17,05 G$ attendus). Analyse et information seulement — aucune recommandation d'achat ou de vente.*\n",
+  "metadonnees": {
+    "source": "nova-cloud 2.0",
+    "modele": "meta-ai-muse",
+    "symboles": [
+      "NASDAQ:AVGO",
+      "NASDAQ:BOTZ",
+      "KOID",
+      "TSE:MTRX",
+      "NYSE:VRT",
+      "TSE:VEQT",
+      "NYSEARCA:VT"
+    ],
+    "category": "alert",
+    "sentiment": "bearish",
+    "isUrgent": true,
+    "priority": "urgent"
+  }
+}
