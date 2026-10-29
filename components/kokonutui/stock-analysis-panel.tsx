@@ -33,6 +33,7 @@ import {
   upsertAutomaticAlertsFromRecommendations,
   type ProactiveSignal,
 } from "@/lib/stock-alerts"
+import { WidgetEmptyState } from "./widget-state"
 
 interface StockAnalysisPanelProps {
   className?: string
@@ -444,7 +445,7 @@ export function StockAnalysisPanel({ className }: StockAnalysisPanelProps) {
             <BarChart3 className="h-4 w-4 text-primary" />
           </div>
           {activeEntries.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Aucune position active.</p>
+            <WidgetEmptyState>Aucune position active.</WidgetEmptyState>
           ) : (
             <div className="space-y-2">
               {activeEntries.map((entry) => (
@@ -488,7 +489,7 @@ export function StockAnalysisPanel({ className }: StockAnalysisPanelProps) {
           <div className="space-y-2">
             <p className="text-xs font-semibold text-foreground">Positions fermees recentes</p>
             {closedEntries.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucune position fermee.</p>
+              <WidgetEmptyState>Aucune position fermée.</WidgetEmptyState>
             ) : (
               closedEntries.map((entry) => (
                 <div key={entry.id} className="rounded-lg border border-border/60 bg-background/60 p-2 text-xs">
@@ -514,7 +515,7 @@ export function StockAnalysisPanel({ className }: StockAnalysisPanelProps) {
             <Sparkles className="h-4 w-4 text-primary" />
           </div>
           {proactiveSignals.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Aucun signal proactif pour le moment.</p>
+            <WidgetEmptyState>Aucun signal proactif pour le moment.</WidgetEmptyState>
           ) : (
             <div className="space-y-2">
               {proactiveSignals.map((signal, index) => (

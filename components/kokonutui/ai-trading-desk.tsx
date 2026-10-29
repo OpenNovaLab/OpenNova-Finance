@@ -11,6 +11,7 @@ import {
   updateTradingPolicy,
 } from "@/lib/trading-client"
 import type { PaperOrderInput, PaperQuote, PaperTradingOverview } from "@/lib/trading-types"
+import { WidgetEmptyState, WidgetLoadingState } from "./widget-state"
 
 interface AiTradingDeskProps {
   className?: string
@@ -247,7 +248,11 @@ export default function AiTradingDesk({ className }: AiTradingDeskProps) {
   }
 
   if (loading) {
-    return <div className={cn("fx-panel p-4 text-sm text-muted-foreground", className)}>Chargement du trading desk...</div>
+    return (
+      <div className={cn("fx-panel p-4", className)}>
+        <WidgetLoadingState label="Chargement du trading desk…" />
+      </div>
+    )
   }
 
   return (
@@ -378,7 +383,7 @@ export default function AiTradingDesk({ className }: AiTradingDeskProps) {
 
           <div className="space-y-2">
             {(overview?.positions ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucune position ouverte.</p>
+              <WidgetEmptyState>Aucune position ouverte.</WidgetEmptyState>
             ) : (
               overview?.positions.map((position) => (
                 <div key={position.symbol} className="rounded-lg border border-border/60 bg-background/60 p-2 text-xs">

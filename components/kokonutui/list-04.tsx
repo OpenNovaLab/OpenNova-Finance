@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { ArrowUpRight, ArrowDownLeft, Plus, Pencil } from "lucide-react"
 import { usePortfolio } from "@/lib/portfolio-context"
 import { StockActionModal } from "./portfolio-modals"
+import { WidgetEmptyState } from "./widget-state"
 import {
   centsToDollars,
   formatCurrencyFromCents,
@@ -80,11 +81,9 @@ export default function List04({ className }: List04Props) {
 
           <div className="space-y-2">
             {stockActions.length === 0 ? (
-              <div className="p-3 rounded-lg border border-dashed border-border/60 text-center">
-                <p className="text-xs text-muted-foreground">
+              <WidgetEmptyState>
                   No trades yet. Add your first stock action to track it here.
-                </p>
-              </div>
+                </WidgetEmptyState>
             ) : (
               stockActions.map((action) => {
                 const totalValue = action.shares * centsToDollars(action.priceCents)
