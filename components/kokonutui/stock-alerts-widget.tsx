@@ -9,6 +9,7 @@ import {
   getRecentTriggeredAlerts,
   type StockAlert,
 } from "@/lib/stock-alerts"
+import { WidgetEmptyState } from "./widget-state"
 
 interface AlertsWidgetProps {
   className?: string
@@ -82,9 +83,7 @@ export function StockAlertsWidget({ className, maxAlerts = 5 }: AlertsWidgetProp
       </div>
 
       {alerts.length === 0 ? (
-        <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-          Aucune alerte declenchee recemment.
-        </div>
+        <WidgetEmptyState>Aucune alerte déclenchée récemment.</WidgetEmptyState>
       ) : (
         <div className="space-y-2">
           {alerts.map((alert) => (
