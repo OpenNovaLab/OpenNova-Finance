@@ -20,7 +20,7 @@
     "health:convex": "node -e \"const s=process.env.HEALTHCHECK_SECRET||'';fetch('http://localhost:3000/api/health/convex',{headers:{'x-health-secret':s}}).then(async r=>{console.log(r.status);console.log(await r.text());if(r.status>=400)process.exit(1)}).catch(e=>{console.error(e);process.exit(1)})\""
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^6.0.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
     "@radix-ui/react-aspect-ratio": "1.1.1",
