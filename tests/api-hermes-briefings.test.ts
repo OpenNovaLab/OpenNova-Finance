@@ -1,0 +1,291 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const mocks = vi.hoisted(() => ({
+  upsertHermesBriefing: vi.fn(),
+  listHermesBriefings: vi.fn(),
+  toggleHermesBriefingReaction: vi.fn(),
+  addHermesBriefingComment: vi.fn(),
+  setHermesBriefingUrgent: vi.fn(),
+}))
+
+vi.mock("@/lib/hermes-briefings-storage", () => ({
+  upsertHermesBriefing: mocks.upsertHermesBriefing,
+  listHermesBriefings: mocks.listHermesBriefings,
+  toggleHermesBriefingReaction: mocks.toggleHermesBriefingReaction,
+  addHermesBriefingComment: mocks.addHermesBriefingComment,
+  setHermesBriefingUrgent: mocks.setHermesBriefingUrgent,
+}))
+
+import { GET, POST, PATCH } from "@/app/api/hermes/briefings/route"
+
+const TEST_KEY = "hermes-test-key-0123456789abcdef"
+const TEST_NOVA_KEY = "nova-test-key-0123456789abcdef00"
+
+const validBriefing = {
+  date: "2026-10-25",
+  source: "hermes" as const,
+  titre: "Briefing Hermes du 2026-10-25",
+  contenuMarkdown: "# Briefing du 2026-10-25\n\n## Vue d'ensemble\n\nSynthèse factuelle.",
+  metadonnees: {
+    source: "hermes-bridge 1.0",
+    modele: "nemotron-3.5-bolt:e4b",
+    genereLe: "2026-10-25T12:30:00.000Z",
+    symboles: ["EXEMPLE"],
+  },
+}
+
+const storedBriefing = {
+  ...validBriefing,
+  id: "hermes-2026-10-25",
+  recuLe: "2026-10-25T12:30:05.000Z",
+}
+
+const postBriefing = (body: unknown, headers: Record<string, string> = {}) =>
+  POST(
+    new Request("http://localhost/api/hermes/briefings", {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: typeof body === "string" ? body : JSON.stringify(body),
+    })
+  )
+
+describe("/api/hermes/briefings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubEnv("HERMES_ENABLED", "true")
+    vi.stubEnv("HERMES_BRIDGE_KEY", TEST_KEY)
+    vi.stubEnv("NOVA_BRIDGE_KEY", TEST_NOVA_KEY)
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("rejette un POST sans clé de service (401)", async () => {
+    const response = await postBriefing(validBriefing)
+    expect(response.status).toBe(401)
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("rejette un POST avec une mauvaise clé (401)", async () => {
+    const response = await postBriefing(validBriefing, { "x-hermes-key": "mauvaise-cle-000000000" })
+    expect(response.status).toBe(401)
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("accepte la clé via Authorization: Bearer", async () => {
+    mocks.upsertHermesBriefing.mockResolvedValueOnce({ briefing: storedBriefing, replaced: false })
+    const response = await postBriefing(validBriefing, {
+      authorization: `Bearer ${TEST_KEY}`,
+    })
+    expect(response.status).toBe(201)
+  })
+
+  it("retourne 503 si aucune clé n'est configurée côté serveur", async () => {
+    vi.stubEnv("HERMES_BRIDGE_KEY", "")
+    vi.stubEnv("NOVA_BRIDGE_KEY", "")
+    const response = await postBriefing(validBriefing, { "x-bridge-key": TEST_KEY })
+    expect(response.status).toBe(503)
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("ingère un briefing Nova avec sa propre clé (source nova)", async () => {
+    const novaBriefing = {
+      ...validBriefing,
+      source: "nova" as const,
+      titre: "Point hebdomadaire Nova du 2026-10-25",
+    }
+    const storedNova = { ...novaBriefing, id: "nova-2026-10-25", recuLe: "2026-10-25T13:00:00.000Z" }
+    mocks.upsertHermesBriefing.mockResolvedValueOnce({ briefing: storedNova, replaced: false })
+
+    const response = await postBriefing(novaBriefing, { "x-bridge-key": TEST_NOVA_KEY })
+    expect(response.status).toBe(201)
+    expect(mocks.upsertHermesBriefing).toHaveBeenCalledWith(novaBriefing)
+  })
+
+  it("rejette la clé Hermes tentant de publier sous la source nova (403)", async () => {
+    const response = await postBriefing(
+      { ...validBriefing, source: "nova" as const },
+      { "x-bridge-key": TEST_KEY }
+    )
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toBe("source_mismatch")
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("rejette la clé Nova tentant de publier sous la source hermes (403)", async () => {
+    const response = await postBriefing(validBriefing, { "x-bridge-key": TEST_NOVA_KEY })
+    expect(response.status).toBe(403)
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("rejette un corps JSON invalide (400)", async () => {
+    const response = await postBriefing("{ pas du json", { "x-hermes-key": TEST_KEY })
+    expect(response.status).toBe(400)
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("rejette un payload invalide (400) : date mal formée, titre absent, champ inconnu", async () => {
+    const badDate = await postBriefing(
+      { ...validBriefing, date: "25/10/2026" },
+      { "x-hermes-key": TEST_KEY }
+    )
+    expect(badDate.status).toBe(400)
+
+    const withoutTitle: Record<string, unknown> = { ...validBriefing }
+    delete withoutTitle.titre
+    const missingTitle = await postBriefing(withoutTitle, { "x-hermes-key": TEST_KEY })
+    expect(missingTitle.status).toBe(400)
+
+    const unknownField = await postBriefing(
+      { ...validBriefing, champInconnu: true },
+      { "x-hermes-key": TEST_KEY }
+    )
+    expect(unknownField.status).toBe(400)
+
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+  })
+
+  it("ingère un briefing valide (201) puis le relit via GET", async () => {
+    mocks.upsertHermesBriefing.mockResolvedValueOnce({ briefing: storedBriefing, replaced: false })
+    mocks.listHermesBriefings.mockResolvedValue([storedBriefing])
+
+    const postResponse = await postBriefing(validBriefing, { "x-hermes-key": TEST_KEY })
+    expect(postResponse.status).toBe(201)
+    expect(mocks.upsertHermesBriefing).toHaveBeenCalledWith(validBriefing)
+    const postPayload = (await postResponse.json()) as { ok: boolean; replaced: boolean }
+    expect(postPayload.ok).toBe(true)
+    expect(postPayload.replaced).toBe(false)
+
+    const getResponse = await GET()
+    expect(getResponse.status).toBe(200)
+    const getPayload = (await getResponse.json()) as {
+      latest: typeof storedBriefing | null
+      history: (typeof storedBriefing)[]
+    }
+    expect(getPayload.latest?.id).toBe("hermes-2026-10-25")
+    expect(getPayload.latest?.source).toBe("hermes")
+    expect(getPayload.history).toHaveLength(1)
+    expect(getPayload.history[0]?.source).toBe("hermes")
+  })
+
+  it("signale un remplacement (200) quand la date existe déjà", async () => {
+    mocks.upsertHermesBriefing.mockResolvedValueOnce({ briefing: storedBriefing, replaced: true })
+    const response = await postBriefing(validBriefing, { "x-hermes-key": TEST_KEY })
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { replaced: boolean }
+    expect(payload.replaced).toBe(true)
+  })
+
+  it("instance désactivée (hybride) : POST propre 503 hermes_disabled, GET dégradé sans erreur", async () => {
+    vi.stubEnv("HERMES_ENABLED", "")
+
+    const postResponse = await postBriefing(validBriefing, { "x-hermes-key": TEST_KEY })
+    expect(postResponse.status).toBe(503)
+    const postPayload = (await postResponse.json()) as { error: string }
+    expect(postPayload.error).toBe("hermes_disabled")
+    expect(mocks.upsertHermesBriefing).not.toHaveBeenCalled()
+
+    const getResponse = await GET()
+    expect(getResponse.status).toBe(200)
+    const getPayload = (await getResponse.json()) as {
+      enabled: boolean
+      latest: unknown
+      history: unknown[]
+    }
+    expect(getPayload.enabled).toBe(false)
+    expect(getPayload.latest).toBeNull()
+    expect(getPayload.history).toEqual([])
+    expect(mocks.listHermesBriefings).not.toHaveBeenCalled()
+  })
+
+  it("GET retourne latest=null et un historique vide quand rien n'a été reçu", async () => {
+    mocks.listHermesBriefings.mockResolvedValue([])
+    const response = await GET()
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { latest: unknown; history: unknown[] }
+    expect(payload.latest).toBeNull()
+    expect(payload.history).toEqual([])
+  })
+
+  it("PATCH permet d'ajouter une réaction (bullish)", async () => {
+    mocks.toggleHermesBriefingReaction.mockResolvedValueOnce({
+      ...storedBriefing,
+      metadonnees: { ...storedBriefing.metadonnees, reactions: { bullish: 1 } },
+    })
+
+    const response = await PATCH(
+      new Request("http://localhost/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "hermes-2026-10-25",
+          action: "react",
+          reaction: "bullish",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { ok: boolean; briefing: { metadonnees?: { reactions?: Record<string, number> } } }
+    expect(payload.ok).toBe(true)
+    expect(payload.briefing.metadonnees?.reactions?.bullish).toBe(1)
+    expect(mocks.toggleHermesBriefingReaction).toHaveBeenCalledWith("hermes-2026-10-25", "bullish")
+  })
+
+  it("PATCH permet d'ajouter un commentaire", async () => {
+    mocks.addHermesBriefingComment.mockResolvedValueOnce({
+      ...storedBriefing,
+      metadonnees: {
+        ...storedBriefing.metadonnees,
+        comments: [{ id: "c-1", author: "Alex", text: "Position forte", date: "2026-10-25T14:00:00Z" }],
+      },
+    })
+
+    const response = await PATCH(
+      new Request("http://localhost/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "hermes-2026-10-25",
+          action: "comment",
+          comment: { author: "Alex", text: "Position forte" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { ok: boolean }
+    expect(payload.ok).toBe(true)
+    expect(mocks.addHermesBriefingComment).toHaveBeenCalledWith("hermes-2026-10-25", {
+      author: "Alex",
+      text: "Position forte",
+    })
+  })
+
+  it("PATCH permet de basculer le statut urgent d'un post (set_urgent)", async () => {
+    mocks.setHermesBriefingUrgent.mockResolvedValueOnce({
+      ...storedBriefing,
+      metadonnees: { ...storedBriefing.metadonnees, isUrgent: true, priority: "urgent" },
+    })
+
+    const response = await PATCH(
+      new Request("http://localhost/api/hermes/briefings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: "hermes-2026-10-25",
+          action: "set_urgent",
+          isUrgent: true,
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as { ok: boolean; briefing: { metadonnees?: { isUrgent?: boolean } } }
+    expect(payload.ok).toBe(true)
+    expect(payload.briefing.metadonnees?.isUrgent).toBe(true)
+    expect(mocks.setHermesBriefingUrgent).toHaveBeenCalledWith("hermes-2026-10-25", true)
+  })
+})

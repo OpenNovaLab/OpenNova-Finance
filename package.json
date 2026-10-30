@@ -20,7 +20,7 @@
     "health:convex": "node -e \"const s=process.env.HEALTHCHECK_SECRET||'';fetch('http://localhost:3000/api/health/convex',{headers:{'x-health-secret':s}}).then(async r=>{console.log(r.status);console.log(await r.text());if(r.status>=400)process.exit(1)}).catch(e=>{console.error(e);process.exit(1)})\""
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^6.0.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
     "@radix-ui/react-aspect-ratio": "1.1.1",
@@ -31,7 +31,7 @@
     "@radix-ui/react-dialog": "1.1.4",
     "@radix-ui/react-dropdown-menu": "2.1.4",
     "@radix-ui/react-hover-card": "1.1.4",
-    "@radix-ui/react-label": "2.1.1",
+    "@radix-ui/react-label": "2.1.17",
     "@radix-ui/react-menubar": "1.1.4",
     "@radix-ui/react-navigation-menu": "1.2.3",
     "@radix-ui/react-popover": "1.1.4",
@@ -49,19 +49,19 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@vercel/analytics": "1.3.1",
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.6.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "convex": "^1.32.0",
-    "date-fns": "4.1.0",
+    "date-fns": "4.4.0",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
-    "next": "15.2.6",
+    "next": "15.5.28",
     "next-themes": "0.4.6",
     "react": "^19",
-    "react-day-picker": "9.8.0",
+    "react-day-picker": "10.0.2",
     "react-dom": "^19",
     "react-hook-form": "^7.60.0",
     "react-resizable-panels": "^2.1.7",
@@ -71,7 +71,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "zod": "3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
@@ -80,10 +80,20 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.38.0",
-    "eslint-config-next": "15.2.6",
-    "postcss": "^8.5",
+    "eslint-config-next": "15.5.28",
+    "postcss": "^8.5.32",
     "tailwindcss": "^3.4.17",
     "typescript": "^5",
-    "vitest": "^4.0.18"
+    "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.23": "^8.5.32",
+      "picomatch@<2.3.2": "^2.3.2",
+      "picomatch@<4.0.4": "^4.0.4",
+      "browserslist@<4.28.7": "^4.28.7",
+      "ws@<8.18.3": "^8.18.3",
+      "postcss-selector-parser@<6.1.3": "^6.1.3"
+    }
   }
 }
