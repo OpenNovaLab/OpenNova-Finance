@@ -1,0 +1,24 @@
+{
+  "id": "nova-2026-10-30-urgent-intel",
+  "date": "2026-10-30",
+  "source": "nova",
+  "titre": "🚨 FLASH URGENT : Intel −25 % en pré-marché sur ses prévisions T4 — transmission directe aux puces (AVGO, BOTZ) à l'ouverture",
+  "contenuMarkdown": "# 🚨 FLASH URGENT — Intel s'effondre d'environ 25 % en pré-marché : les prévisions T4 cassent, le complexe des puces est entraîné\n\n## Faits (vérifiés ce matin, vendredi 30 octobre 2026)\n\n- **Intel en pré-marché : 69,04 $ US, −25,01 % à 08 h 12 HE (Finnhub)**, après une clôture jeudi à 92,07 $ — en voie d'effacer environ 120 G$ US de capitalisation si le niveau tient en séance.\n- **Le T3 battait** : BPA ajusté **0,52 $** contre ~0,40 $ attendu, revenus **16,51 G$ US (+21 %)**. Ce n'est pas le trimestre écoulé qui est sanctionné.\n- **Les prévisions T4 cassent** : revenus attendus de **15–16 G$** contre ~17,07 G$ au consensus, BPA ajusté **0,25 $** contre ~0,43 $, marge brute attendue à **38 %** (contre 43 % au T3).\n- **Causes énoncées par la direction** : marché PC en baisse de **12 % en 2026 et 10 % en 2027** (prix et disponibilité de la mémoire), contraintes de fabrication (serveurs, substrats), consommation de trésorerie attendue cette année et flux libre positif improbable en 2027 selon le directeur financier, et **~600 M$ de revenus perdus sur deux trimestres** après l'explosion d'octobre à l'usine de Kiryat Gat (Israël).\n- **Réaction en chaîne ce matin** : contrats à terme Nasdaq 100 **−2,19 % à −2,33 %**, Amazon **−~7,2 %** en pré-marché (son propre raté d'hier soir), **AVGO −3,67 % à 332,32 $**. Morningstar abaisse sa juste valeur d'Intel de 105 $ à **85 $**.\n\n## Impact direct sur tes positions\n\n- **NASDAQ:AVGO, NASDAQ:BOTZ, KOID, TSE:MTRX** : exposition immédiate à l'ouverture — aucune nouvelle propre à ces titres, la baisse est une transmission sectorielle (puces et matériel IA) combinant Intel et Amazon.\n- **NYSE:VRT** : même canal de sentiment, avec le fait d'appui inverse déjà établi (commandes et prévisions relevées le 28 octobre ; tenue à +1,23 % hier dans un Nasdaq à −1,38 %).\n- **Fonds larges (TSE:VEQT, NYSEARCA:VT)** : pression mécanique via les pondérations techno US, partiellement amortie par l'énergie (Exxon +~2 %, Chevron +~1 % en pré-marché après avoir battu le consensus) et par un 10 ans US en détente (4,89–4,94 %).\n\n## Ce qui reste incertain\n\n- **La tenue en séance régulière** : les replis de pré-marché de cette ampleur se résorbent parfois partiellement (Amazon est déjà passé de −11 % après-Bourse à −7 % en pré-marché) ; les volumes d'avant-ouverture sont minces.\n- **Le caractère spécifique ou systémique** : les causes d'Intel (PC, mémoire, accident industriel) ne sont pas celles d'AVGO ou de VRT, dont la demande liée aux centres de données a été confirmée cette semaine par Azure (+48 %), AWS (+39 %) et les commandes Vertiv. La séance dira si le marché distingue les deux récits ou vend le complexe en bloc.\n\n*Sources vérifiées le matin du 30 octobre 2026 : Finnhub (INTC 69,04 $ −25,01 % et AVGO 332,32 $ −3,67 % en pré-marché à 08 h 12 HE), Reuters via CTech et Stocktwits/Morningstar (T3 : BPA ajusté 0,52 $, revenus 16,51 G$ +21 % ; prévisions T4 15–16 G$ / BPA 0,25 $ / marge 38 % ; marché PC −12 % en 2026 et −10 % en 2027 ; Kiryat Gat ~600 M$ ; juste valeur 105 $ → 85 $), TipRanks/Invezz (Nasdaq 100 −2,19 % à −2,33 %, Amazon −7,2 % en pré-marché). Analyse et information seulement — aucune recommandation d'achat ou de vente.*\n",
+  "metadonnees": {
+    "source": "nova-cloud 2.0",
+    "modele": "meta-ai-muse",
+    "symboles": [
+      "NASDAQ:AVGO",
+      "NASDAQ:BOTZ",
+      "KOID",
+      "TSE:MTRX",
+      "NYSE:VRT",
+      "TSE:VEQT",
+      "NYSEARCA:VT"
+    ],
+    "category": "alert",
+    "sentiment": "bearish",
+    "isUrgent": true,
+    "priority": "urgent"
+  }
+}

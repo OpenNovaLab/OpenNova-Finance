@@ -1,0 +1,19 @@
+{
+  "id": "nova-2026-10-30-urgent-cameco",
+  "date": "2026-10-30",
+  "source": "nova",
+  "titre": "🚨 FLASH URGENT : Cameco rate son T3 (BPA 0,00 $ contre ~0,27 $ attendus) — pression directe sur URNM et HURA à l'ouverture",
+  "contenuMarkdown": "# 🚨 FLASH URGENT — Cameco rate son T3 ce matin avant l'ouverture : lecture directe pour URNM et HURA\n\n## Faits (publiés vendredi 30 octobre 2026, avant l'ouverture)\n\n- **Revenus T3 : 619 M$ CAD (+1 % sur un an)** ; **bénéfice brut : 122 M$ (−28 %)** ; BAIIA ajusté du trimestre : **267 M$**, et **1,166 G$ sur neuf mois (−13 % sur un an)** (Cameco via Business Wire).\n- **Le cadrage de Seeking Alpha est un double raté** : BPA non-GAAP de **0,00 $ CAD, soit −0,27 $ sous le consensus**, et revenus **134,87 M$ CAD sous** son consensus compilé.\n- **Le cadrage de la direction est « conforme aux attentes »** : arrêt de maintenance prolongé **planifié** à l'usine de Key Lake commencé au T3 (volumes de production moindres, coûts plus élevés, assumés d'avance), et revenus de la participation Westinghouse moindres sur un an (le T3 2025 incluait un paiement important lié au projet Dukovany).\n- **Prévisions 2026 resserrées** pour la production et les livraisons d'uranium, « à mesure que le calendrier devient plus clair » ; **dividende annuel déclaré** ; les fondamentaux de l'industrie nucléaire « continuent de se renforcer » selon la direction.\n- **Réaction** : CCJ en baisse de **−2,6 % à −3,6 % en pré-marché** US (~80,51–81,35 $ US, après 83,49 $ à la clôture de jeudi).\n\n## Impact direct sur tes positions\n\n- **NYSEARCA:URNM et TSE:HURA** : Cameco est le producteur de référence du secteur de l'uranium et une pondération centrale de ces fonds. La pression probable à l'ouverture prolonge le dé-risquage d'hier (URNM −2,21 %, HURA −1,34 %) — le marché avait déjà réduit son exposition avant ce chiffre binaire, ce qui peut amortir ou, si le raté est lu comme structurel, amplifier le mouvement.\n\n## Ce qui reste incertain\n\n- **Planifié ou structurel** : l'écart entre les deux cadrages (arrêt planifié et coûts assumés, contre double raté au consensus) se réglera dans la conférence de Cameco (08 h 00 HE) et dans le cours en séance. Le prix long terme de référence de l'uranium (96,50 $/lb fin septembre) et les contrats pluriannuels du secteur n'ont pas changé ce matin.\n- **L'ampleur exacte à l'ouverture canadienne** : les relevés pré-marché US sont minces ; le TSX ouvre à 09 h 30 HE.\n\n*Sources vérifiées le matin du 30 octobre 2026 : Cameco via Business Wire/Morningstar/Junior Mining Network (revenus 619 M$ CAD +1 %, bénéfice brut 122 M$ −28 %, arrêt planifié de Key Lake, Westinghouse/Dukovany, dividende déclaré), TradingView/Quartr (BAIIA ajusté T3 267 M$, neuf mois 1,166 G$ −13 %, prévisions resserrées), Seeking Alpha (BPA non-GAAP 0,00 $ CAD, −0,27 $ sous le consensus ; revenus −134,87 M$ sous le consensus ; titre en baisse en pré-marché), Public.com/StockAnalysis/Finnhub (CCJ ~80,51–81,35 $ US en pré-marché, −2,6 % à −3,6 % ; clôture jeudi 83,49 $). Analyse et information seulement — aucune recommandation d'achat ou de vente.*\n",
+  "metadonnees": {
+    "source": "nova-cloud 2.0",
+    "modele": "meta-ai-muse",
+    "symboles": [
+      "NYSEARCA:URNM",
+      "TSE:HURA"
+    ],
+    "category": "alert",
+    "sentiment": "bearish",
+    "isUrgent": true,
+    "priority": "urgent"
+  }
+}
